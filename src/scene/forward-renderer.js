@@ -1418,9 +1418,12 @@ pc.extend(pc, function () {
                 this.modelMatrixId.setValue(modelMatrix.data);
 
                 if (normal) {
-                    normalMatrix = meshInstance.normalMatrix;
-                    modelMatrix.invertTo3x3(normalMatrix); // TODO: cache
-                    normalMatrix.transpose();
+                    normalMatrix = meshInstance.node.normalMatrix;
+                    if (meshInstance.node.dirtyNormal) {
+                        modelMatrix.invertTo3x3(normalMatrix);
+                        normalMatrix.transpose();
+                        meshInstance.node.dirtyNormal = false;
+                    }
                     this.normalMatrixId.setValue(normalMatrix.data);
                 }
 
@@ -1550,7 +1553,7 @@ pc.extend(pc, function () {
                     } else if (type === pc.LIGHTTYPE_SPOT) {
 
                         // don't update invisible light
-                        if (camera.frustumCulling) {
+                        if (camera.frustumCulling && light.shadowUpdateMode===pc.SHADOWUPDATE_REALTIME) {
                             light.getBoundingSphere(tempSphere);
                             if (!camera.frustum.containsSphere(tempSphere)) continue;
                         }
@@ -1567,7 +1570,7 @@ pc.extend(pc, function () {
                     } else if (type === pc.LIGHTTYPE_POINT) {
 
                         // don't update invisible light
-                        if (camera.frustumCulling) {
+                        if (camera.frustumCulling && light.shadowUpdateMode===pc.SHADOWUPDATE_REALTIME) {
                             light.getBoundingSphere(tempSphere);
                             if (!camera.frustum.containsSphere(tempSphere)) continue;
                         }
@@ -1753,7 +1756,7 @@ pc.extend(pc, function () {
                 }
             }
             // #ifdef PROFILER
-            this._shadowMapTime = pc.now() - shadowMapStartTime;
+            this._shadowMapTime += pc.now() - shadowMapStartTime;
             // #endif
         },
 
@@ -1797,8 +1800,13 @@ pc.extend(pc, function () {
                 var i;
                 var shadowType;
                 var rect = camera._rect;
-                var width = Math.floor(rect.width * device.width);
-                var height = Math.floor(rect.height * device.height);
+
+                var target = camera.renderTarget;
+                var width = target? target.width : device.width;
+                var height = target? target.height : device.height;
+                width = Math.floor(rect.width * width);
+                height = Math.floor(rect.height * height);
+
                 var meshInstance, mesh, material, style, depthShader;
 
                 var vrDisplay = camera.vrDisplay;
@@ -1894,7 +1902,7 @@ pc.extend(pc, function () {
             }
 
             // #ifdef PROFILER
-            this._depthMapTime = pc.now() - startTime;
+            this._depthMapTime += pc.now() - startTime;
             // #endif
         },
 
@@ -2107,7 +2115,7 @@ pc.extend(pc, function () {
             device.setStencilTest(false); // don't leak stencil state
 
             // #ifdef PROFILER
-            this._forwardTime = pc.now() - forwardStartTime;
+            this._forwardTime += pc.now() - forwardStartTime;
             // #endif
         },
 
@@ -2212,6 +2220,7 @@ pc.extend(pc, function () {
             var triBounds = [];
             var staticLights = [];
             var bit;
+            var lht;
             for(i=0; i<drawCallsCount; i++) {
                 drawCall = drawCalls[i];
                 if (!drawCall.isStatic) {
@@ -2262,7 +2271,7 @@ pc.extend(pc, function () {
                     mesh = drawCall.mesh;
                     vertexBuffer = mesh.vertexBuffer;
                     indexBuffer = mesh.indexBuffer[drawCall.renderStyle];
-                    indices = new Uint16Array(indexBuffer.lock());
+                    indices = indexBuffer.bytesPerIndex===2? new Uint16Array(indexBuffer.lock()) : new Uint32Array(indexBuffer.lock());
                     numTris = mesh.primitive[drawCall.renderStyle].count / 3;
                     baseIndex = mesh.primitive[drawCall.renderStyle].base;
                     elems = vertexBuffer.format.elements;
@@ -2379,7 +2388,7 @@ pc.extend(pc, function () {
                         for(combIbName in combIndices) {
                             combIb = combIndices[combIbName];
                             var ib = new pc.IndexBuffer(device, indexBuffer.format, combIb.length, indexBuffer.usage);
-                            var ib2 = new Uint16Array(ib.lock());
+                            var ib2 = ib.bytesPerIndex===2? new Uint16Array(ib.lock()) : new Uint32Array(ib.lock());
                             ib2.set(combIb);
                             ib.unlock();
 
@@ -2442,7 +2451,10 @@ pc.extend(pc, function () {
                             for(k=0; k<staticLights.length; k++) {
                                 bit = 1 << k;
                                 if (combIbName & bit) {
-                                    instance._staticLightList.push(lights[ staticLights[k] ]);
+                                    lht = lights[ staticLights[k] ];
+                                    if (instance._staticLightList.indexOf(lht) < 0) {
+                                        instance._staticLightList.push(lht);
+                                    }
                                 }
                             }
 
