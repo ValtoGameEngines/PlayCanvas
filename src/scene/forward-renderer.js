@@ -798,11 +798,18 @@ pc.extend(pc, function () {
             }
 
             projMat = camera.getProjectionMatrix();
-            var pos = camera._node.getPosition();
-            var rot = camera._node.getRotation();
-            viewInvMat.setTRS(pos, rot, pc.Vec3.ONE);
-            this.viewInvId.setValue(viewInvMat.data);
+            if (camera.hasCustomProjFunc) camera.customProjFunc(projMat, pc.VIEW_CENTER);
+
+            if (camera.hasCustomTransformFunc) {
+                camera.customTransformFunc(viewInvMat, pc.VIEW_CENTER);
+            } else {
+                var pos = camera._node.getPosition();
+                var rot = camera._node.getRotation();
+                viewInvMat.setTRS(pos, rot, pc.Vec3.ONE);
+                this.viewInvId.setValue(viewInvMat.data);
+            }
             viewMat.copy(viewInvMat).invert();
+
             camera.frustum.update(projMat, viewMat);
         },
 
@@ -1932,9 +1939,9 @@ pc.extend(pc, function () {
 
                 // Set depth RT
                 var oldTarget = camera.renderTarget;
-                var oldClear = camera.getClearOptions();
+                var oldClear = camera._clearOptions;
                 camera.renderTarget = camera._depthTarget;
-                camera.setClearOptions(rgbaDepthClearOptions);
+                camera._clearOptions = rgbaDepthClearOptions;
                 this.setCamera(camera);
 
                 // Render
@@ -2000,7 +2007,7 @@ pc.extend(pc, function () {
 
                 // Set old rt
                 camera.renderTarget = oldTarget;
-                camera.setClearOptions(oldClear);
+                camera._clearOptions = oldClear;
             } else {
                 if (camera._depthTarget) {
                     camera._depthTarget.destroy();
@@ -2024,7 +2031,7 @@ pc.extend(pc, function () {
             this.sortDrawCalls(drawCalls, this.frontToBack? this.sortCompare : this.sortCompareMesh, pc.SORTKEY_FORWARD);
             this.prepareInstancing(device, drawCalls, pc.SORTKEY_FORWARD, pass);
 
-            var i, drawCall, mesh, material, objDefs, lightMask, style, usedDirLights;
+            var i, drawCall, mesh, material, objDefs, variantKey, lightMask, style, usedDirLights;
             var prevMeshInstance = null, prevMaterial = null, prevObjDefs, prevLightMask, prevStatic;
             var paramName, parameter, parameters;
             var stencilFront, stencilBack;
@@ -2101,10 +2108,11 @@ pc.extend(pc, function () {
                         this._materialSwitches++;
                         if (!drawCall._shader[pass] || drawCall._shaderDefs !== objDefs) {
                             if (!drawCall.isStatic) {
-                                drawCall._shader[pass] = material.variants[objDefs];
+                                variantKey = pass + "_" + objDefs;
+                                drawCall._shader[pass] = material.variants[variantKey];
                                 if (!drawCall._shader[pass]) {
                                     material.updateShader(device, scene, objDefs, null, pass);
-                                    drawCall._shader[pass] = material.variants[objDefs] = material.shader;
+                                    drawCall._shader[pass] = material.variants[variantKey] = material.shader;
                                 }
                             } else {
                                 material.updateShader(device, scene, objDefs, drawCall._staticLightList, pass);
