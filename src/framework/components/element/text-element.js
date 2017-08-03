@@ -1,4 +1,5 @@
 pc.extend(pc, function () {
+
     var TextElement = function TextElement (element) {
         this._element = element;
         this._system = element.system;
@@ -16,6 +17,11 @@ pc.extend(pc, function () {
         this._fontSize = 32;
         this._lineHeight = 32;
 
+        this._alignment = new pc.Vec2(0.5, 0.5);
+
+        this._autoWidth = true;
+        this._autoHeight = true;
+
         this.width = 0;
         this.height = 0;
 
@@ -30,6 +36,7 @@ pc.extend(pc, function () {
         this._normals = [];
         this._uvs = [];
         this._indices = [];
+        this._lines = [];
 
         this._noResize = false; // flag used to disable resizing events
 
@@ -41,6 +48,7 @@ pc.extend(pc, function () {
         this._element.on('set:screen', this._onScreenChange, this);
         element.on('screen:set:screenspace', this._onScreenSpaceChange, this);
         element.on('set:draworder', this._onDrawOrderChange, this);
+        element.on('set:pivot', this._onPivotChange, this);
     };
 
     pc.extend(TextElement.prototype, {
@@ -55,6 +63,7 @@ pc.extend(pc, function () {
             this._element.off('set:screen', this._onScreenChange, this);
             this._element.off('screen:set:screenspace', this._onScreenSpaceChange, this);
             this._element.off('set:draworder', this._onDrawOrderChange, this);
+            this._element.off('set:pivot', this._onPivotChange, this);
         },
 
         _onParentResize: function (width, height) {
@@ -81,6 +90,11 @@ pc.extend(pc, function () {
             }
         },
 
+        _onPivotChange: function (pivot) {
+            if (this._font)
+                this._updateText();
+        },
+
         _updateText: function (text) {
             if (text === undefined) text = this._text;
 
@@ -93,7 +107,7 @@ pc.extend(pc, function () {
                     // destroy old mesh
                     this._mesh.vertexBuffer.destroy();
                     for (var i = 0; i < this._mesh.indexBuffer.length; i++) {
-                        this._mesh.indexBuffer[i].destroy()
+                        this._mesh.indexBuffer[i].destroy();
                     }
 
                     this._model = null;
@@ -124,9 +138,10 @@ pc.extend(pc, function () {
                 this._meshInstance.setParameter("texture_msdfMap", this._font.texture);
                 this._meshInstance.setParameter("material_emissive", this._color.data3);
                 this._meshInstance.setParameter("material_opacity", this._color.data[3]);
+                this._meshInstance.setParameter("font_sdfIntensity", this._font.intensity);
 
                 // add model to sceen
-                if (this._entity.enabled) {
+                if (this._entity.enabled && this._element.enabled) {
                     this._system.app.scene.addModel(this._model);
                 }
                 this._entity.addChild(this._model.graph);
@@ -172,7 +187,7 @@ pc.extend(pc, function () {
             for (var i = 0; i < l; i++) {
                 this._indices.push((i*4), (i*4)+1, (i*4)+3);
                 this._indices.push((i*4)+2, (i*4)+3, (i*4)+1);
-            };
+            }
 
             var mesh = pc.createMesh(this._system.app.graphicsDevice, this._positions, {uvs: this._uvs, normals: this._normals, indices: this._indices});
             this._updateMesh(mesh, text);
@@ -184,8 +199,8 @@ pc.extend(pc, function () {
             var vb = mesh.vertexBuffer;
             var it = new pc.VertexIterator(vb);
 
-            var width = 0;
-            var height = 0;
+            this.width = 0;
+            this.height = 0;
 
             var l = text.length;
             var _x = 0; // cursors
@@ -203,6 +218,9 @@ pc.extend(pc, function () {
             var lastSoftBreak = 0;
 
             var lines = 1;
+            this._lines.length = 0;
+            var lastLine = 0;
+
             for (var i = 0; i < l; i++) {
                 var char = text.charCodeAt(i);
 
@@ -214,6 +232,14 @@ pc.extend(pc, function () {
                     lastSoftBreak = i;
                     lines++;
                     continue;
+                }
+
+                if (lastLine !== lines) {
+                    lastLine = lines;
+                    this._lines.push(i);
+                }
+                else {
+                    this._lines[this._lines.length - 1] = i;
                 }
 
                 if (char === 32) {
@@ -229,7 +255,7 @@ pc.extend(pc, function () {
                 var data = json.chars[char];
                 if (data && data.scale) {
                     scale = this._fontSize / data.scale;
-                    advance = this._fontSize * data.xadvance / data.width;
+                    advance = (this._fontSize * data.xadvance) / data.width;
                     x = this._fontSize * data.xoffset / data.width;
                     y = this._fontSize * data.yoffset / data.height;
                 } else {
@@ -256,7 +282,7 @@ pc.extend(pc, function () {
                 this._positions[i*4*3+10] = _y - y + scale;
                 this._positions[i*4*3+11] = _z;
 
-                this.width = _x - (x - scale);
+                this.width = Math.max(this.width, _x - (x - scale));
 
                 if (this._positions[i*4*3+7] > maxy) maxy = this._positions[i*4*3+7];
                 if (this._positions[i*4*3+1] < miny) miny = this._positions[i*4*3+1];
@@ -299,21 +325,37 @@ pc.extend(pc, function () {
                 this._indices.push((i*4)+2, (i*4)+3, (i*4)+1);
             }
 
-            // offset for pivot
+            // force autoWidth / autoHeight change to update width/height of element
+            this._noResize = true;
+            this.autoWidth = this._autoWidth;
+            this.autoHeight = this._autoHeight;
+            this._noResize = false;
+
+            // offset for pivot and alignment
             var hp = this._element.pivot.data[0];
             var vp = this._element.pivot.data[1];
+            var ha = this._alignment.x;
+            var va = this._alignment.y;
 
-            for (var i = 0; i < this._positions.length; i += 3) {
-                this._positions[i] -= hp*this.width;
-                // this._positions[i+1] += (vp-1) + (lines*this._lineHeight*vp);
-                this._positions[i+1] += (((1-vp)*lines)-1)*this._lineHeight;
+            for (var line = 0; line < lines; line++) {
+                var index = this._lines[line];
+                var width = this._positions[index*4*3+3];
+                var hoffset = - hp * this._element.width + ha * (this._element.width - width);
+                var voffset = (1 - vp) * this._element.height - maxy - (1 - va) * (this._element.height - this.height);
+
+                var i = (line === 0 ? 0 : this._lines[line - 1] + 1);
+                for (; i <= index; i++) {
+                    this._positions[i*4*3] += hoffset;
+                    this._positions[i*4*3 + 3] += hoffset;
+                    this._positions[i*4*3 + 6] += hoffset;
+                    this._positions[i*4*3 + 9] += hoffset;
+
+                    this._positions[i*4*3 + 1] += voffset;
+                    this._positions[i*4*3 + 4] += voffset;
+                    this._positions[i*4*3 + 7] += voffset;
+                    this._positions[i*4*3 + 10] += voffset;
+                }
             }
-
-            // update width/height of element
-            this._noResize = true;
-            this._element.width = this.width;
-            this._element.height = this.height;
-            this._noResize = false;
 
             // update vertex buffer
             var numVertices = l*4;
@@ -327,6 +369,10 @@ pc.extend(pc, function () {
             it.end();
 
             mesh.aabb.compute(this._positions);
+
+            // force update meshInstance aabb
+            if (this._meshInstance)
+                this._meshInstance._aabbVer = -1;
         },
 
         _onFontAdded: function (asset) {
@@ -355,8 +401,13 @@ pc.extend(pc, function () {
             }
         },
 
-        _onFontChange: function (asset) {
-
+        _onFontChange: function (asset, name, _new, _old) {
+            if (name === 'data') {
+                this._font.data = _new;
+                if (this._meshInstance) {
+                    this._meshInstance.setParameter("font_sdfIntensity", this._font.intensity);
+                }
+            }
         },
 
         _onFontRemove: function (asset) {
@@ -370,7 +421,7 @@ pc.extend(pc, function () {
 
             if (!data.chars[char]) {
                 // missing char
-                return [0,0,1,1]
+                return [0,0,1,1];
             }
 
             var x = data.chars[char].x;
@@ -380,7 +431,7 @@ pc.extend(pc, function () {
             var y1 = y;
             var x2 = (x + data.chars[char].width);
             var y2 = (y - data.chars[char].height);
-            var edge = 1 - (data.chars[char].height / height)
+            var edge = 1 - (data.chars[char].height / height);
             return [
                 x1 / width,
                 edge - (y1 / height), // bottom left
@@ -449,11 +500,11 @@ pc.extend(pc, function () {
 
     Object.defineProperty(TextElement.prototype, "lineHeight", {
         get: function () {
-            return this._lineHeight
+            return this._lineHeight;
         },
 
         set: function (value) {
-            var _prev = this._lineHeight
+            var _prev = this._lineHeight;
             this._lineHeight = value;
             if (_prev !== value && this._font) {
                 this._updateText();
@@ -463,7 +514,7 @@ pc.extend(pc, function () {
 
     Object.defineProperty(TextElement.prototype, "spacing", {
         get: function () {
-            return this._spacing
+            return this._spacing;
         },
 
         set: function (value) {
@@ -483,6 +534,8 @@ pc.extend(pc, function () {
         set: function (value) {
             var _prev = this._fontSize;
             this._fontSize = value;
+            if (this._meshInstance) {
+            }
             if (_prev !== value && this._font) {
                 this._updateText();
             }
@@ -533,8 +586,56 @@ pc.extend(pc, function () {
 
         set: function (value) {
             this._font = value;
+
+            if(this._meshInstance) {
+                this._meshInstance.setParameter("font_sdfIntensity", this._font.intensity);
+            }
+
             if (this._font)
                 this._updateText();
+        }
+    });
+
+    Object.defineProperty(TextElement.prototype, "alignment", {
+        get: function () {
+            return this._alignment;
+        },
+
+        set: function (value) {
+            if (value instanceof pc.Vec2) {
+                this._alignment.set(value.x, value.y);
+            } else {
+                this._alignment.set(value[0], value[1]);
+            }
+
+            if (this._font)
+                this._updateText();
+        }
+    });
+
+    Object.defineProperty(TextElement.prototype, "autoWidth", {
+        get: function () {
+            return this._autoWidth;
+        },
+
+        set: function (value) {
+            this._autoWidth = value;
+            if (value) {
+                this._element.width = this.width;
+            }
+        }
+    });
+
+    Object.defineProperty(TextElement.prototype, "autoHeight", {
+        get: function () {
+            return this._autoHeight;
+        },
+
+        set: function (value) {
+            this._autoHeight = value;
+            if (value) {
+                this._element.height = this.height;
+            }
         }
     });
 

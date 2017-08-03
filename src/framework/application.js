@@ -161,6 +161,10 @@ pc.extend(pc, function () {
         this.mouse = options.mouse || null;
         this.touch = options.touch || null;
         this.gamepads = options.gamepads || null;
+        this.elementInput = options.elementInput || null;
+        if (this.elementInput)
+            this.elementInput.app = this;
+
         this.vr = null;
         // you can enable vr here, or in application properties
         if (options.vr) {
@@ -1286,9 +1290,8 @@ pc.extend(pc, function () {
     var makeTick = function (_app) {
         var app = _app;
         return function () {
-            if (!app.graphicsDevice) {
+            if (! app.graphicsDevice)
                 return;
-            }
 
             Application._currentApplication = app;
 
@@ -1305,7 +1308,7 @@ pc.extend(pc, function () {
             dt *= app.timeScale;
 
             // Submit a request to queue up a new animation frame immediately
-            if (app.vr && app.vr.display && app.vr.display.presenting) {
+            if (app.vr && app.vr.display) {
                 app.vr.display.requestAnimationFrame(app.tick);
             } else {
                 window.requestAnimationFrame(app.tick);
@@ -1332,7 +1335,6 @@ pc.extend(pc, function () {
             if (app.vr && app.vr.display && app.vr.display.presenting) {
                 app.vr.display.submitFrame();
             }
-
         }
     };
     // static data
