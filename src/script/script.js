@@ -527,14 +527,31 @@ pc.extend(pc, function () {
                 return this._enabled && this.entity.script.enabled && this.entity.enabled;
             },
             set: function(value) {
-                if (this._enabled !== !! value)
-                    this._enabled = !! value;
+                value = !!value;
+                if (this._enabled !== value)
+                    this._enabled = value;
 
                 if (this.enabled !== this._enabledOld) {
                     this._enabledOld = this.enabled;
                     this.fire(this.enabled ? 'enable' : 'disable');
                     this.fire('state', this.enabled);
+
+                    if (! this._initialized && this.enabled) {
+                        this._initialized = true;
+
+                        this.__initializeAttributes(true);
+
+                        if (this.initialize)
+                            this.entity.script._scriptMethod(this, pc.ScriptComponent.scriptMethods.initialize);
+                    }
+
+                    if (this.app._initialized && ! this._postInitialized && this.enabled) {
+                        this._postInitialized = true;
+                        if (this.postInitialize)
+                            this.entity.script._scriptMethod(this, pc.ScriptComponent.scriptMethods.postInitialize);
+                    }
                 }
+
             }
         });
 
