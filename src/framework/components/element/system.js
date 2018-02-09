@@ -32,7 +32,7 @@ pc.extend(pc, function () {
         this.defaultImageMaterial.diffuse = new pc.Color(0,0,0,1); // black diffuse color to prevent ambient light being included
         this.defaultImageMaterial.emissive = new pc.Color(0.5,0.5,0.5,1); // use non-white to compile shader correctly
         this.defaultImageMaterial.emissiveMap = this._defaultTexture;
-        this.defaultImageMaterial.emissiveMapTint = true;
+        this.defaultImageMaterial.emissiveTint = true;
         this.defaultImageMaterial.opacityMap = this._defaultTexture;
         this.defaultImageMaterial.opacityMapChannel = "a";
         this.defaultImageMaterial.opacityTint = true;
@@ -49,7 +49,7 @@ pc.extend(pc, function () {
         this.defaultScreenSpaceImageMaterial.diffuse = new pc.Color(0,0,0,1); // black diffuse color to prevent ambient light being included
         this.defaultScreenSpaceImageMaterial.emissive = new pc.Color(0.5,0.5,0.5,1); // use non-white to compile shader correctly
         this.defaultScreenSpaceImageMaterial.emissiveMap = this._defaultTexture;
-        this.defaultScreenSpaceImageMaterial.emissiveMapTint = true;
+        this.defaultScreenSpaceImageMaterial.emissiveTint = true;
         this.defaultScreenSpaceImageMaterial.opacityMap = this._defaultTexture;
         this.defaultScreenSpaceImageMaterial.opacityMapChannel = "a";
         this.defaultScreenSpaceImageMaterial.opacityTint = true;
@@ -191,6 +191,9 @@ pc.extend(pc, function () {
                 }
                 if (data.textureAsset !== undefined) component.textureAsset = data.textureAsset;
                 if (data.texture) component.texture = data.texture;
+                if (data.spriteAsset !== undefined) component.spriteAsset = data.spriteAsset;
+                if (data.sprite) component.sprite = data.sprite;
+                if (data.frame !== undefined) component.frame = data.frame;
                 if (data.materialAsset !== undefined) component.materialAsset = data.materialAsset;
                 if (data.material) component.material = data.material;
             } else if(component.type === pc.ELEMENTTYPE_TEXT) {
@@ -257,6 +260,9 @@ pc.extend(pc, function () {
                 opacity: source.opacity,
                 textureAsset: source.textureAsset,
                 texture: source.texture,
+                spriteAsset: source.spriteAsset,
+                sprite: source.sprite,
+                frame: source.frame,
                 text: source.text,
                 spacing: source.spacing,
                 lineHeight: source.lineHeight,
