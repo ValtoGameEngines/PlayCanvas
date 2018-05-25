@@ -10,14 +10,27 @@ pc.extend(pc, function () {
     var _pd = new pc.Vec3();
     var _m = new pc.Vec3();
     var _sct = new pc.Vec3();
+    var _accumulatedScale = new pc.Vec2();
+    var _paddingTop = new pc.Vec3();
+    var _paddingBottom = new pc.Vec3();
+    var _paddingLeft = new pc.Vec3();
+    var _paddingRight = new pc.Vec3();
+    var _cornerBottomLeft = new pc.Vec3();
+    var _cornerBottomRight = new pc.Vec3();
+    var _cornerTopRight = new pc.Vec3();
+    var _cornerTopLeft = new pc.Vec3();
+
+    var ZERO_VEC4 = new pc.Vec4();
 
     // pi x p2 * p3
     var scalarTriple = function (p1, p2, p3) {
         return _sct.cross(p1, p2).dot(p3);
     };
 
-    // Given line pq and ccw corners of a quad, return whether the line
-    // intersects it. (from Real-Time Collision Detection book)
+    /*
+     * Given line pq and ccw corners of a quad, return whether the line
+     * intersects it. (from Real-Time Collision Detection book)
+     */
     var intersectLineQuad = function (p, q, corners) {
         _pq.sub2(q, p);
         _pa.sub2(corners[0], p);
@@ -44,8 +57,10 @@ pc.extend(pc, function () {
                 return false;
         }
 
-        // The algorithm above doesn't work if all the corners are the same
-        // So do that test here by checking if the diagonals are 0 (since these are rectangles we're checking against)
+        /*
+         * The algorithm above doesn't work if all the corners are the same
+         * So do that test here by checking if the diagonals are 0 (since these are rectangles we're checking against)
+         */
         if (_pq.sub2(corners[0], corners[2]).lengthSq() < 0.0001 * 0.0001) return false;
         if (_pq.sub2(corners[1], corners[3]).lengthSq() < 0.0001 * 0.0001) return false;
 
@@ -123,8 +138,10 @@ pc.extend(pc, function () {
             this.dy = y - lastY;
         }
 
-        // FF uses 'detail' and returns a value in 'no. of lines' to scroll
-        // WebKit and Opera use 'wheelDelta', WebKit goes in multiples of 120 per wheel notch
+        /*
+         * FF uses 'detail' and returns a value in 'no. of lines' to scroll
+         * WebKit and Opera use 'wheelDelta', WebKit goes in multiples of 120 per wheel notch
+         */
         if (event.detail) {
             this.wheel = -1 * event.detail;
         } else if (event.wheelDelta) {
@@ -168,6 +185,9 @@ pc.extend(pc, function () {
         this._attached = false;
         this._target = null;
 
+        // force disable all element input events
+        this._enabled = true;
+
         this._lastX = 0;
         this._lastY = 0;
 
@@ -184,6 +204,7 @@ pc.extend(pc, function () {
         this._hoveredElement = null;
         this._pressedElement = null;
         this._touchedElements = {};
+        this._touchesForWhichTouchLeaveHasFired = {};
 
         if ('ontouchstart' in window) {
             this._clickedEntities = {};
@@ -228,7 +249,7 @@ pc.extend(pc, function () {
          * @description Remove mouse and touch events from the DOM element that it is attached to
          */
         detach: function () {
-            if (! this._attached) return;
+            if (!this._attached) return;
             this._attached = false;
 
             window.removeEventListener('mouseup', this._upHandler, false);
@@ -269,6 +290,8 @@ pc.extend(pc, function () {
         },
 
         _handleUp: function (event) {
+            if (!this._enabled) return;
+
             if (pc.Mouse.isPointerLocked())
                 return;
 
@@ -280,6 +303,8 @@ pc.extend(pc, function () {
         },
 
         _handleDown: function (event) {
+            if (!this._enabled) return;
+
             if (pc.Mouse.isPointerLocked())
                 return;
 
@@ -291,6 +316,8 @@ pc.extend(pc, function () {
         },
 
         _handleMove: function (event) {
+            if (!this._enabled) return;
+
             this._calcMouseCoords(event);
             if (targetX === null)
                 return;
@@ -302,6 +329,8 @@ pc.extend(pc, function () {
         },
 
         _handleWheel: function (event) {
+            if (!this._enabled) return;
+
             this._calcMouseCoords(event);
             if (targetX === null)
                 return;
@@ -309,19 +338,22 @@ pc.extend(pc, function () {
             this._onElementMouseEvent(event);
         },
 
-        _handleTouchStart: function (event) {
+        _determineTouchedElements: function (event) {
+            var touchedElements = {};
             var cameras = this.app.systems.camera.cameras;
             var i, j, len;
 
-            // check cameras from last to front
-            // so that elements that are drawn above others
-            // receive events first
+            /*
+             * check cameras from last to front
+             * so that elements that are drawn above others
+             * receive events first
+             */
             for (i = cameras.length - 1; i >= 0; i--) {
                 var camera = cameras[i];
 
                 var done = 0;
                 for (j = 0, len = event.changedTouches.length; j < len; j++) {
-                    if (this._touchedElements[event.changedTouches[j].identifier]) {
+                    if (touchedElements[event.changedTouches[j].identifier]) {
                         done++;
                         continue;
                     }
@@ -331,8 +363,7 @@ pc.extend(pc, function () {
                     var element = this._getTargetElement(camera, coords.x, coords.y);
                     if (element) {
                         done++;
-                        this._touchedElements[event.changedTouches[j].identifier] = element;
-                        this._fireEvent(event.type, new ElementTouchEvent(event, element, this));
+                        touchedElements[event.changedTouches[j].identifier] = element;
                     }
                 }
 
@@ -340,15 +371,40 @@ pc.extend(pc, function () {
                     break;
                 }
             }
+
+            return touchedElements;
+        },
+
+        _handleTouchStart: function (event) {
+            if (!this._enabled) return;
+
+            var newTouchedElements = this._determineTouchedElements(event);
+
+            for (var i = 0, len = event.changedTouches.length; i < len; i++) {
+                var touch = event.changedTouches[i];
+                var newTouchedElement = newTouchedElements[touch.identifier];
+                var oldTouchedElement = this._touchedElements[touch.identifier];
+
+                if (newTouchedElement && newTouchedElement !== oldTouchedElement) {
+                    this._fireEvent(event.type, new ElementTouchEvent(event, newTouchedElement, this));
+                    this._touchesForWhichTouchLeaveHasFired[touch.identifier] = false;
+                }
+            }
+
+            this._touchedElements = newTouchedElements;
         },
 
         _handleTouchEnd: function (event) {
+            if (!this._enabled) return;
+
             var cameras = this.app.systems.camera.cameras;
 
-            // clear clicked entities first then store each clicked entity
-            // in _clickedEntities so that we don't fire another click
-            // on it in this handler or in the mouseup handler which is
-            // fired later
+            /*
+             * clear clicked entities first then store each clicked entity
+             * in _clickedEntities so that we don't fire another click
+             * on it in this handler or in the mouseup handler which is
+             * fired later
+             */
             for (var key in this._clickedEntities) {
                 delete this._clickedEntities[key];
             }
@@ -356,15 +412,18 @@ pc.extend(pc, function () {
             for (var i = 0, len = event.changedTouches.length; i < len; i++) {
                 var touch = event.changedTouches[i];
                 var element = this._touchedElements[touch.identifier];
-                if (! element)
+                if (!element)
                     continue;
 
                 delete this._touchedElements[touch.identifier];
+                delete this._touchesForWhichTouchLeaveHasFired[touch.identifier];
 
                 this._fireEvent(event.type, new ElementTouchEvent(event, element, this));
 
-                // check if touch was released over previously touch
-                // element in order to fire click event
+                /*
+                 * check if touch was released over previously touch
+                 * element in order to fire click event
+                 */
                 if (event.touches.length === 0) {
                     var coords = this._calcTouchCoords(touch);
 
@@ -372,7 +431,7 @@ pc.extend(pc, function () {
                         var hovered = this._getTargetElement(cameras[c], coords.x, coords.y);
                         if (hovered === element) {
 
-                            if (! this._clickedEntities[element.entity.getGuid()]) {
+                            if (!this._clickedEntities[element.entity.getGuid()]) {
                                 this._fireEvent('click', new ElementTouchEvent(event, element, this));
                                 this._clickedEntities[element.entity.getGuid()] = true;
                             }
@@ -384,14 +443,38 @@ pc.extend(pc, function () {
         },
 
         _handleTouchMove: function (event) {
-            // call preventDefault to avoid issues in Chrome Android:
-            // http://wilsonpage.co.uk/touch-events-in-chrome-android/
+            if (!this._enabled) return;
+
+            /*
+             * call preventDefault to avoid issues in Chrome Android:
+             * http://wilsonpage.co.uk/touch-events-in-chrome-android/
+             */
             event.preventDefault();
 
+            var newTouchedElements = this._determineTouchedElements(event);
+
             for (var i = 0, len = event.changedTouches.length; i < len; i++) {
-                var element = this._touchedElements[event.changedTouches[i].identifier];
-                if (element) {
-                    this._fireEvent(event.type, new ElementTouchEvent(event, element, this));
+                var touch = event.changedTouches[i];
+                var newTouchedElement = newTouchedElements[touch.identifier];
+                var oldTouchedElement = this._touchedElements[touch.identifier];
+
+                if (oldTouchedElement) {
+                    // Fire touchleave if we've left the previously touched element
+                    if (newTouchedElement !== oldTouchedElement && !this._touchesForWhichTouchLeaveHasFired[touch.identifier]) {
+                        this._fireEvent('touchleave', new ElementTouchEvent(event, oldTouchedElement, this));
+
+                        /*
+                         * Flag that touchleave has been fired for this touch, so that we don't
+                         * re-fire it on the next touchmove. This is required because touchmove
+                         * events keep on firing for the same element until the touch ends, even
+                         * if the touch position moves away from the element. Touchleave, on the
+                         * other hand, should fire once when the touch position moves away from
+                         * the element and then not re-fire again within the same touch session.
+                         */
+                        this._touchesForWhichTouchLeaveHasFired[touch.identifier] = true;
+                    }
+
+                    this._fireEvent('touchmove', new ElementTouchEvent(event, oldTouchedElement, this));
                 }
             }
         },
@@ -404,9 +487,11 @@ pc.extend(pc, function () {
 
             var cameras = this.app.systems.camera.cameras;
 
-            // check cameras from last to front
-            // so that elements that are drawn above others
-            // receive events first
+            /*
+             * check cameras from last to front
+             * so that elements that are drawn above others
+             * receive events first
+             */
             for (var i = cameras.length - 1; i >= 0; i--) {
                 var camera = cameras[i];
 
@@ -461,11 +546,11 @@ pc.extend(pc, function () {
                 if (evt._stopPropagation)
                     break;
 
-                if (! element.entity.parent)
+                if (!element.entity.parent)
                     break;
 
                 element = element.entity.parent.element;
-                if (! element)
+                if (!element)
                     break;
             }
 
@@ -514,16 +599,16 @@ pc.extend(pc, function () {
         },
 
         _sortElements: function (a, b) {
-            if (a.screen && ! b.screen)
+            if (a.screen && !b.screen)
                 return -1;
             if (!a.screen && b.screen)
                 return 1;
-            if (! a.screen && ! b.screen)
+            if (!a.screen && !b.screen)
                 return 0;
 
-            if (a.screen.screen.screenSpace && ! b.screen.screen.screenSpace)
+            if (a.screen.screen.screenSpace && !b.screen.screen.screenSpace)
                 return -1;
-            if (b.screen.screen.screenSpace && ! a.screen.screen.screenSpace)
+            if (b.screen.screen.screenSpace && !a.screen.screen.screenSpace)
                 return 1;
             return b.drawOrder - a.drawOrder;
         },
@@ -557,6 +642,54 @@ pc.extend(pc, function () {
             return result;
         },
 
+        /*
+         * In most cases the corners used for hit testing will just be the element's
+         * screen corners. However, in cases where the element has additional hit
+         * padding specified, we need to expand the screenCorners to incorporate the
+         * padding.
+         */
+        _buildHitCorners: function (element, screenOrWorldCorners, scaleX, scaleY) {
+            var hitCorners = screenOrWorldCorners;
+            var button = element.entity && element.entity.button;
+
+            if (button) {
+                var hitPadding = element.entity.button.hitPadding || ZERO_VEC4;
+
+                _paddingTop.copy(element.entity.up);
+                _paddingBottom.copy(_paddingTop).scale(-1);
+                _paddingRight.copy(element.entity.right);
+                _paddingLeft.copy(_paddingRight).scale(-1);
+
+                _paddingTop.scale(hitPadding.data[3] * scaleY);
+                _paddingBottom.scale(hitPadding.data[1] * scaleY);
+                _paddingRight.scale(hitPadding.data[2] * scaleX);
+                _paddingLeft.scale(hitPadding.data[0] * scaleX);
+
+                _cornerBottomLeft.copy(hitCorners[0]).add(_paddingBottom).add(_paddingLeft);
+                _cornerBottomRight.copy(hitCorners[1]).add(_paddingBottom).add(_paddingRight);
+                _cornerTopRight.copy(hitCorners[2]).add(_paddingTop).add(_paddingRight);
+                _cornerTopLeft.copy(hitCorners[3]).add(_paddingTop).add(_paddingLeft);
+
+                hitCorners = [_cornerBottomLeft, _cornerBottomRight, _cornerTopRight, _cornerTopLeft];
+            }
+
+            return hitCorners;
+        },
+
+        _calculateScaleToScreen: function (element) {
+            var current = element.entity;
+            var screenScale = element.screen.screen.scale;
+
+            _accumulatedScale.set(screenScale, screenScale);
+
+            while (current && !current.screen) {
+                _accumulatedScale.mul(current.getLocalScale());
+                current = current.parent;
+            }
+
+            return _accumulatedScale;
+        },
+
         _checkElement2d: function (x, y, element, camera) {
             var sw = this.app.graphicsDevice.width;
             var sh = this.app.graphicsDevice.height;
@@ -583,11 +716,12 @@ pc.extend(pc, function () {
                 // reverse _y
                 _y = sh - _y;
 
-                var screenCorners = element.screenCorners;
+                var scale = this._calculateScaleToScreen(element);
+                var hitCorners = this._buildHitCorners(element, element.screenCorners, scale.x, scale.y);
                 vecA.set(_x, _y, 1);
                 vecB.set(_x, _y, -1);
 
-                if (intersectLineQuad(vecA, vecB, screenCorners)) {
+                if (intersectLineQuad(vecA, vecB, hitCorners)) {
                     return true;
                 }
             }
@@ -619,7 +753,8 @@ pc.extend(pc, function () {
                 _y = sh * (_y - (cameraTop)) / cameraHeight;
 
                 // 3D screen
-                var worldCorners = element.worldCorners;
+                var scale = element.entity.getWorldTransform().getScale();
+                var worldCorners = this._buildHitCorners(element, element.worldCorners, scale.x, scale.y);
                 var start = vecA;
                 var end = vecB;
                 camera.screenToWorld(_x, _y, camera.nearClip, start);
@@ -633,6 +768,15 @@ pc.extend(pc, function () {
             return false;
         }
     };
+
+    Object.defineProperty(ElementInput.prototype, 'enabled', {
+        get: function () {
+            return this._enabled;
+        },
+        set: function (value) {
+            this._enabled = value;
+        }
+    });
 
     Object.defineProperty(ElementInput.prototype, 'app', {
         get: function () {
