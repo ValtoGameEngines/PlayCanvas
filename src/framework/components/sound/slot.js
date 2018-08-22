@@ -1,10 +1,8 @@
-pc.extend(pc, function () {
+Object.assign(pc, function () {
     'use strict';
 
-    /*
-     * temporary object for creating
-     * instances
-     */
+    // temporary object for creating
+    // instances
     var instanceOptions = {
         volume: 0,
         pitch: 0,
@@ -86,7 +84,7 @@ pc.extend(pc, function () {
         pc.events.attach(this);
     };
 
-    SoundSlot.prototype = {
+    Object.assign(SoundSlot.prototype, {
         /**
          * @function pc.SoundSlot#play
          * @description Plays a sound. If {@link pc.SoundSlot#overlap} is true the new sound
@@ -103,10 +101,8 @@ pc.extend(pc, function () {
             var instance = this._createInstance();
             this.instances.push(instance);
 
-            /*
-             * if not loaded then load first
-             * and then set sound resource on the created instance
-             */
+            // if not loaded then load first
+            // and then set sound resource on the created instance
             if (!this.isLoaded) {
                 var onLoad = function (sound) {
                     var playWhenLoaded = instance._playWhenLoaded;
@@ -414,7 +410,7 @@ pc.extend(pc, function () {
                 instances[i].position = position;
             }
         }
-    };
+    });
 
     Object.defineProperty(SoundSlot.prototype, 'name', {
         get: function () {

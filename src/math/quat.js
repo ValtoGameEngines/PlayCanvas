@@ -1,4 +1,4 @@
-pc.extend(pc, (function () {
+Object.assign(pc, (function () {
     'use strict';
 
     /**
@@ -82,7 +82,7 @@ pc.extend(pc, (function () {
      * quat.w = 0;
      */
 
-    Quat.prototype = {
+    Object.assign(Quat.prototype, {
         /**
          * @function
          * @name pc.Quat#clone
@@ -594,10 +594,8 @@ pc.extend(pc, (function () {
          * result = new pc.Quat().slerp(q1, q2, 1);   // Return q2
          */
         slerp: function (lhs, rhs, alpha) {
-            /*
-             * Algorithm sourced from:
-             * http://www.euclideanspace.com/maths/algebra/realNormedAlgebra/quaternions/slerp/
-             */
+            // Algorithm sourced from:
+            // http://www.euclideanspace.com/maths/algebra/realNormedAlgebra/quaternions/slerp/
             var lx, ly, lz, lw, rx, ry, rz, rw;
             lx = lhs.x;
             ly = lhs.y;
@@ -632,10 +630,8 @@ pc.extend(pc, (function () {
             var halfTheta = Math.acos(cosHalfTheta);
             var sinHalfTheta = Math.sqrt(1 - cosHalfTheta * cosHalfTheta);
 
-            /*
-             * If theta = 180 degrees then result is not fully defined
-             * we could rotate around any axis normal to qa or qb
-             */
+            // If theta = 180 degrees then result is not fully defined
+            // we could rotate around any axis normal to qa or qb
             if (Math.abs(sinHalfTheta) < 0.001) {
                 this.w = (lw * 0.5 + rw * 0.5);
                 this.x = (lx * 0.5 + rx * 0.5);
@@ -706,7 +702,7 @@ pc.extend(pc, (function () {
         toString: function () {
             return '[' + this.x + ', ' + this.y + ', ' + this.z + ', ' + this.w + ']';
         }
-    };
+    });
 
     /**
      * @field

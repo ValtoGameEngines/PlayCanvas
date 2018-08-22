@@ -1,4 +1,4 @@
-pc.extend(pc, function () {
+Object.assign(pc, function () {
     var tmpVecA = new pc.Vec3();
     var tmpVecB = new pc.Vec3();
     var tmpVecC = new pc.Vec3();
@@ -20,7 +20,7 @@ pc.extend(pc, function () {
         this.radius = radius === undefined ? 0.5 : radius;
     }
 
-    BoundingSphere.prototype = {
+    Object.assign(BoundingSphere.prototype, {
         containsPoint: function (point) {
             var lenSq = tmpVecA.sub2(point, this.center).lengthSq();
             var r = this.radius;
@@ -35,10 +35,8 @@ pc.extend(pc, function () {
             var avgVertex = tmpVecB;
             var sum = tmpVecC;
 
-            /*
-             * FIRST PASS:
-             * Find the "average vertex", which is the sphere's center...
-             */
+            // FIRST PASS:
+            // Find the "average vertex", which is the sphere's center...
 
             for (i = 0; i < numVerts; i++) {
                 vertex.set(vertices[i * 3], vertices[i * 3 + 1], vertices[i * 3 + 2]);
@@ -57,10 +55,8 @@ pc.extend(pc, function () {
 
             this.center.copy(avgVertex);
 
-            /*
-             * SECOND PASS:
-             * Find the maximum (squared) distance of all vertices to the center...
-             */
+            // SECOND PASS:
+            // Find the maximum (squared) distance of all vertices to the center...
             var maxDistSq = 0;
             var centerToVert = tmpVecD;
 
@@ -122,7 +118,7 @@ pc.extend(pc, function () {
 
             return false;
         }
-    };
+    });
 
     return {
         BoundingSphere: BoundingSphere

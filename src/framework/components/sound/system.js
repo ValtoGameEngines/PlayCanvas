@@ -1,4 +1,4 @@
-pc.extend(pc, function () {
+Object.assign(pc, function () {
     var _schema = [
         'enabled',
         'volume',
@@ -25,6 +25,8 @@ pc.extend(pc, function () {
      * @extends pc.ComponentSystem
      */
     var SoundComponentSystem = function (app, manager) {
+        pc.ComponentSystem.call(this, app);
+
         this.id = "sound";
         this.description = "Allows an Entity to play sounds";
         app.systems.add(this.id, this);
@@ -40,14 +42,15 @@ pc.extend(pc, function () {
 
         this.on('beforeremove', this.onBeforeRemove, this);
     };
-    SoundComponentSystem = pc.inherits(SoundComponentSystem, pc.ComponentSystem);
+    SoundComponentSystem.prototype = Object.create(pc.ComponentSystem.prototype);
+    SoundComponentSystem.prototype.constructor = SoundComponentSystem;
 
     pc.Component._buildAccessors(pc.SoundComponent.prototype, _schema);
 
-    pc.extend(SoundComponentSystem.prototype, {
+    Object.assign(SoundComponentSystem.prototype, {
         initializeComponentData: function (component, data, properties) {
             properties = ['volume', 'pitch', 'positional', 'refDistance', 'maxDistance', 'rollOffFactor', 'distanceModel', 'slots', 'enabled'];
-            SoundComponentSystem._super.initializeComponentData.call(this, component, data, properties);
+            pc.ComponentSystem.prototype.initializeComponentData.call(this, component, data, properties);
         },
 
         cloneComponent: function (entity, clone) {
@@ -62,10 +65,8 @@ pc.extend(pc, function () {
                 }
             }
 
-            /*
-             * convert 'slots' back to
-             * simple option objects
-             */
+            // convert 'slots' back to
+            // simple option objects
             newData.slots = {};
 
             for (key in oldData.slots) {

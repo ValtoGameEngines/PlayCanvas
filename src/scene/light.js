@@ -1,4 +1,4 @@
-pc.extend(pc, function () {
+Object.assign(pc, function () {
 
     var spotCenter = new pc.Vec3();
     var spotEndPoint = new pc.Vec3();
@@ -78,7 +78,7 @@ pc.extend(pc, function () {
         this._visibleCameraSettings = []; // camera settings used in each directional light pass
     };
 
-    Light.prototype = {
+    Object.assign(Light.prototype, {
         destroy: function () {
             this._destroyShadowMap();
         },
@@ -121,15 +121,13 @@ pc.extend(pc, function () {
             clone.shadowResolution = this._shadowResolution;
             clone.shadowDistance = this.shadowDistance;
 
-            /*
-             * Cookies properties
-             * clone.cookie = this._cookie;
-             * clone.cookieIntensity = this.cookieIntensity;
-             * clone.cookieFalloff = this._cookieFalloff;
-             * clone.cookieChannel = this._cookieChannel;
-             * clone.cookieTransform = this._cookieTransform;
-             * clone.cookieOffset = this._cookieOffset;
-             */
+            // Cookies properties
+            // clone.cookie = this._cookie;
+            // clone.cookieIntensity = this.cookieIntensity;
+            // clone.cookieFalloff = this._cookieFalloff;
+            // clone.cookieChannel = this._cookieChannel;
+            // clone.cookieTransform = this._cookieTransform;
+            // clone.cookieOffset = this._cookieOffset;
 
             return clone;
         },
@@ -244,22 +242,20 @@ pc.extend(pc, function () {
         },
 
         updateKey: function () {
-            /*
-             * Key definition:
-             * Bit
-             * 31      : sign bit (leave)
-             * 29 - 30 : type
-             * 28      : cast shadows
-             * 25 - 27 : shadow type
-             * 23 - 24 : falloff mode
-             * 22      : normal offset bias
-             * 21      : cookie
-             * 20      : cookie falloff
-             * 18 - 19 : cookie channel R
-             * 16 - 17 : cookie channel G
-             * 14 - 15 : cookie channel B
-             * 12      : cookie transform
-             */
+            // Key definition:
+            // Bit
+            // 31      : sign bit (leave)
+            // 29 - 30 : type
+            // 28      : cast shadows
+            // 25 - 27 : shadow type
+            // 23 - 24 : falloff mode
+            // 22      : normal offset bias
+            // 21      : cookie
+            // 20      : cookie falloff
+            // 18 - 19 : cookie channel R
+            // 16 - 17 : cookie channel G
+            // 14 - 15 : cookie channel B
+            // 12      : cookie transform
             var key =
                    (this._type                                << 29) |
                    ((this._castShadows ? 1 : 0)               << 28) |
@@ -278,7 +274,7 @@ pc.extend(pc, function () {
 
             this.key = key;
         }
-    };
+    });
 
     Object.defineProperty(Light.prototype, 'enabled', {
         get: function () {
@@ -347,10 +343,10 @@ pc.extend(pc, function () {
                 value = pc.SHADOW_PCF3; // fallback from HW PCF to old PCF
             }
 
-            if (value === pc.SHADOW_VSM32 && !device.extTextureFloatRenderable) // fallback from vsm32 to vsm16
+            if (value === pc.SHADOW_VSM32 && !device.textureFloatRenderable) // fallback from vsm32 to vsm16
                 value = pc.SHADOW_VSM16;
 
-            if (value === pc.SHADOW_VSM16 && !device.extTextureHalfFloatRenderable) // fallback from vsm16 to vsm8
+            if (value === pc.SHADOW_VSM16 && !device.textureHalfFloatRenderable) // fallback from vsm16 to vsm8
                 value = pc.SHADOW_VSM8;
 
             this._isVsm = value >= pc.SHADOW_VSM8 && value <= pc.SHADOW_VSM32;

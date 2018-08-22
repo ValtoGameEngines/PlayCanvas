@@ -1,8 +1,7 @@
-pc.extend(pc, function () {
+Object.assign(pc, function () {
     'use strict';
 
     /**
-     * @private
      * @constructor
      * @name pc.TextureAtlas
      * @classdesc A pc.TextureAtlas contains a number of frames from a texture. Each frame defines a region in
@@ -36,7 +35,7 @@ pc.extend(pc, function () {
     };
 
     /**
-     * @private
+     * @function
      * @name pc.TextureAtlas#setFrame
      * @param {String} key The key of the frame.
      * @param {Object} data The properties of the frame.
@@ -69,7 +68,7 @@ pc.extend(pc, function () {
     };
 
     /**
-     * @private
+     * @function
      * @name pc.TextureAtlas#removeFrame
      * @param {String} key The key of the frame.
      * @example
@@ -84,7 +83,6 @@ pc.extend(pc, function () {
     };
 
     /**
-     * @private
      * @function
      * @name pc.TextureAtlas#destroy
      * @description Free up the underlying WebGL resource owned by the texture.

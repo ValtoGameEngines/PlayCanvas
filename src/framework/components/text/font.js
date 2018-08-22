@@ -1,5 +1,6 @@
-pc.extend(pc, function () {
+Object.assign(pc, function () {
     pc.FONT_MSDF = 'msdf';
+    pc.FONT_BITMAP = 'bitmap';
 
     /**
      * @constructor
@@ -11,7 +12,7 @@ pc.extend(pc, function () {
      * @property {pc.Texture[]} textures The font textures
      */
     var Font = function (textures, data) {
-        this.type = pc.FONT_MSDF;
+        this.type = data ? data.type || pc.FONT_MSDF : pc.FONT_MSDF;
 
         this.em = 1;
 
@@ -24,9 +25,6 @@ pc.extend(pc, function () {
         // json data
         this._data = null;
         this.data = data;
-    };
-
-    Font.prototype = {
     };
 
     Object.defineProperty(Font.prototype, "data", {

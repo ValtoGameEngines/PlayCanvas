@@ -1,4 +1,4 @@
-pc.extend(pc, function () {
+Object.assign(pc, function () {
     /**
      * @constructor
      * @name pc.ComponentSystem
@@ -14,7 +14,7 @@ pc.extend(pc, function () {
     };
 
     // Class methods
-    pc.extend(ComponentSystem, {
+    Object.assign(ComponentSystem, {
         initialize: function (root) {
             ComponentSystem.fire('initialize', root);
         },
@@ -153,10 +153,8 @@ pc.extend(pc, function () {
                 var value = data[name];
 
                 if (value !== undefined) {
-                    /*
-                     * If we know the intended type of the value, convert the raw data
-                     * into an instance of the specified type.
-                     */
+                    // If we know the intended type of the value, convert the raw data
+                    // into an instance of the specified type.
                     if (type !== undefined) {
                         value = convertValue(value, type);
                     }

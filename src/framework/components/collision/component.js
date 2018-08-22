@@ -1,4 +1,4 @@
-pc.extend(pc, function () {
+Object.assign(pc, function () {
     /**
      * @component
      * @constructor
@@ -67,6 +67,8 @@ pc.extend(pc, function () {
      * @extends pc.Component
      */
     var CollisionComponent = function CollisionComponent(system, entity) {
+        pc.Component.call(this, system, entity);
+
         this.on('set_type', this.onSetType, this);
         this.on('set_halfExtents', this.onSetHalfExtents, this);
         this.on('set_radius', this.onSetRadius, this);
@@ -75,7 +77,8 @@ pc.extend(pc, function () {
         this.on("set_asset", this.onSetAsset, this);
         this.on("set_model", this.onSetModel, this);
     };
-    CollisionComponent = pc.inherits(CollisionComponent, pc.Component);
+    CollisionComponent.prototype = Object.create(pc.Component.prototype);
+    CollisionComponent.prototype.constructor = CollisionComponent;
 
     // Events Documentation
     /**
@@ -115,7 +118,7 @@ pc.extend(pc, function () {
      * @param {pc.Entity} other The {@link pc.Entity} that exited this collision volume.
      */
 
-    pc.extend(CollisionComponent.prototype, {
+    Object.assign(CollisionComponent.prototype, {
 
         onSetType: function (name, oldValue, newValue) {
             if (oldValue !== newValue) {
@@ -174,10 +177,8 @@ pc.extend(pc, function () {
 
             if (this.data.initialized && this.data.type === 'mesh') {
                 if (!newValue) {
-                    /*
-                     * if asset is null set model to null
-                     * so that it's going to be removed from the simulation
-                     */
+                    // if asset is null set model to null
+                    // so that it's going to be removed from the simulation
                     this.data.model = null;
                 }
                 this.system.recreatePhysicalShapes(this);
@@ -186,11 +187,9 @@ pc.extend(pc, function () {
 
         onSetModel: function (name, oldValue, newValue) {
             if (this.data.initialized && this.data.type === 'mesh') {
-                /*
-                 * recreate physical shapes skipping loading the model
-                 * from the 'asset' as the model passed in newValue might
-                 * have been created procedurally
-                 */
+                // recreate physical shapes skipping loading the model
+                // from the 'asset' as the model passed in newValue might
+                // have been created procedurally
                 this.system.implementations.mesh.doRecreatePhysicalShape(this);
             }
         },
@@ -203,14 +202,12 @@ pc.extend(pc, function () {
         },
 
         onEnable: function () {
-            CollisionComponent._super.onEnable.call(this);
+            pc.Component.prototype.onEnable.call(this);
 
             if (this.data.type === 'mesh' && this.data.asset && this.data.initialized) {
                 var asset = this.system.app.assets.get(this.data.asset);
-                /*
-                 * recreate the collision shape if the model asset is not loaded
-                 * or the shape does not exist
-                 */
+                // recreate the collision shape if the model asset is not loaded
+                // or the shape does not exist
                 if (asset && (!asset.resource || !this.data.shape)) {
                     this.system.recreatePhysicalShapes(this);
                     return;
@@ -227,7 +224,7 @@ pc.extend(pc, function () {
         },
 
         onDisable: function () {
-            CollisionComponent._super.onDisable.call(this);
+            pc.Component.prototype.onDisable.call(this);
 
             if (this.entity.trigger) {
                 this.entity.trigger.disable();

@@ -1,4 +1,4 @@
-pc.extend(pc, function () {
+Object.assign(pc, function () {
     /**
      * @component
      * @constructor
@@ -65,6 +65,8 @@ pc.extend(pc, function () {
      * Don't push/pop/splice or modify this array, if you want to change it - set a new one instead.
      */
     var CameraComponent = function CameraComponent(system, entity) {
+        pc.Component.call(this, system, entity);
+
         // Bind event to update hierarchy if camera node changes
         this.on("set_aspectRatioMode", this.onSetAspectRatioMode, this);
         this.on("set_aspectRatio", this.onSetAspectRatio, this);
@@ -90,7 +92,8 @@ pc.extend(pc, function () {
         this.on("set_flipFaces", this.onSetFlipFaces, this);
         this.on("set_layers", this.onSetLayers, this);
     };
-    CameraComponent = pc.inherits(CameraComponent, pc.Component);
+    CameraComponent.prototype = Object.create(pc.Component.prototype);
+    CameraComponent.prototype.constructor = CameraComponent;
 
     /**
      * @readonly
@@ -172,7 +175,7 @@ pc.extend(pc, function () {
         }
     });
 
-    pc.extend(CameraComponent.prototype, {
+    Object.assign(CameraComponent.prototype, {
         /**
          * @function
          * @name pc.CameraComponent#screenToWorld
@@ -370,7 +373,7 @@ pc.extend(pc, function () {
         },
 
         onEnable: function () {
-            CameraComponent._super.onEnable.call(this);
+            pc.Component.prototype.onEnable.call(this);
             this.system.addCamera(this);
 
             this.system.app.scene.on("set:layers", this.onLayersChanged, this);
@@ -387,7 +390,7 @@ pc.extend(pc, function () {
         },
 
         onDisable: function () {
-            CameraComponent._super.onDisable.call(this);
+            pc.Component.prototype.onDisable.call(this);
             this.postEffects.disable();
 
             this.removeCameraFromLayers();
@@ -479,11 +482,9 @@ pc.extend(pc, function () {
                     display.requestPresent(function (err) {
                         if (!err) {
                             self.vrDisplay = display;
-                            /*
-                             * camera component uses internal 'before' event
-                             * this means display nulled before anyone other
-                             * code gets to update
-                             */
+                            // camera component uses internal 'before' event
+                            // this means display nulled before anyone other
+                            // code gets to update
                             self.vrDisplay.once('beforepresentchange', function (display) {
                                 if (!display.presenting) {
                                     self.vrDisplay = null;

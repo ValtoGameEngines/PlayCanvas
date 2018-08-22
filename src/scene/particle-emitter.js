@@ -1,5 +1,5 @@
 // Mr F
-pc.extend(pc, function () {
+Object.assign(pc, function () {
     var particleVerts = [
         [-1, -1],
         [1, -1],
@@ -43,6 +43,33 @@ pc.extend(pc, function () {
         return texture;
     };
 
+    function frac(f) {
+        return f - Math.floor(f);
+    }
+
+    function encodeFloatRGBA( v ) {
+        var encX = frac(v);
+        var encY = frac(255.0 * v);
+        var encZ = frac(65025.0 * v);
+        var encW = frac(160581375.0 * v);
+
+        encX -= encY / 255.0;
+        encY -= encZ / 255.0;
+        encZ -= encW / 255.0;
+        encW -= encW / 255.0;
+
+        return [encX, encY, encZ, encW];
+    }
+
+    function encodeFloatRG( v ) {
+        var encX = frac(v);
+        var encY = frac(255.0 * v);
+
+        encX -= encY / 255.0;
+        encY -= encY / 255.0;
+
+        return [encX, encY];
+    }
 
     function saturate(x) {
         return Math.max(Math.min(x, 1), 0);
@@ -391,7 +418,7 @@ pc.extend(pc, function () {
         mat3.data[8] = mat4.data[10];
     }
 
-    ParticleEmitter.prototype = {
+    Object.assign(ParticleEmitter.prototype, {
 
         onChangeCamera: function () {
             this.regenShader();
@@ -528,7 +555,7 @@ pc.extend(pc, function () {
 
             this.vertexBuffer = undefined; // force regen VB
 
-            this.pack8 = (this.pack8 || !gd.extTextureFloatRenderable) && !this.useCpu;
+            this.pack8 = (this.pack8 || !gd.textureFloatRenderable) && !this.useCpu;
 
             particleTexHeight = (this.useCpu || this.pack8) ? 4 : 2;
 
@@ -827,17 +854,15 @@ pc.extend(pc, function () {
             // updateShader is also called by pc.Scene when all shaders need to be updated
             this.material.updateShader = function () {
 
-                /*
-                 * The app works like this:
-                 * 1. Emitter init
-                 * 2. Update. No camera is assigned to emitters
-                 * 3. Render; activeCamera = camera; shader init
-                 * 4. Update. activeCamera is set to emitters
-                 * -----
-                 * The problem with 1st frame render is that we init the shader without having any camera set to emitter -
-                 * so wrong shader is being compiled.
-                 * To fix it, we need to check activeCamera!=emitter.camera in shader init too
-                 */
+                // The app works like this:
+                // 1. Emitter init
+                // 2. Update. No camera is assigned to emitters
+                // 3. Render; activeCamera = camera; shader init
+                // 4. Update. activeCamera is set to emitters
+                // -----
+                // The problem with 1st frame render is that we init the shader without having any camera set to emitter -
+                // so wrong shader is being compiled.
+                // To fix it, we need to check activeCamera!=emitter.camera in shader init too
                 if (this.emitter.scene) {
                     if (this.emitter.camera != this.emitter.scene._activeCamera) {
                         this.emitter.camera = this.emitter.scene._activeCamera;
@@ -1372,18 +1397,14 @@ pc.extend(pc, function () {
                         }
                     } else {
                         if (life >= particleLifetime) {
-                            /*
-                             * respawn particle by moving it's life back to zero.
-                             * OR below zero, if there are still unspawned particles to be emitted before this one.
-                             * such thing happens when you have an enormous amount of particles with short lifetime.
-                             */
+                            // respawn particle by moving it's life back to zero.
+                            // OR below zero, if there are still unspawned particles to be emitted before this one.
+                            // such thing happens when you have an enormous amount of particles with short lifetime.
                             life -= Math.max(particleLifetime, (this.numParticles - 1) * particleRate);
 
-                            /*
-                             * dead particles in a single-shot system continue their paths, but marked as invisible.
-                             * it is necessary for keeping correct separation between particles, based on emission rate.
-                             * dying again in a looped system they will become visible on next respawn.
-                             */
+                            // dead particles in a single-shot system continue their paths, but marked as invisible.
+                            // it is necessary for keeping correct separation between particles, based on emission rate.
+                            // dying again in a looped system they will become visible on next respawn.
                             this.particleTex[id * particleTexChannels + 3 + this.numParticlesPot * 2 * particleTexChannels] = this.loop ? 1 : -1;
                         }
                         if (life < 0 && this.loop) {
@@ -1419,10 +1440,8 @@ pc.extend(pc, function () {
                     }
                 }
 
-                /*
-                 * Particle sorting
-                 * TODO: optimize
-                 */
+                // Particle sorting
+                // TODO: optimize
                 if (this.sort > pc.PARTICLESORT_NONE && this.camera) {
                     var particleDistance = this.particleDistance;
                     for (i = 0; i < this.numParticles; i++) {
@@ -1466,12 +1485,10 @@ pc.extend(pc, function () {
             if (this.rtParticleTexIN) this.rtParticleTexIN.destroy();
             if (this.rtParticleTexOUT) this.rtParticleTexOUT.destroy();
 
-            /*
-             * TODO: delete shaders from cache with reference counting
-             * if (this.shaderParticleUpdateRespawn) this.shaderParticleUpdateRespawn.destroy();
-             * if (this.shaderParticleUpdateNoRespawn) this.shaderParticleUpdateNoRespawn.destroy();
-             * if (this.shaderParticleUpdateOnStop) this.shaderParticleUpdateOnStop.destroy();
-             */
+            // TODO: delete shaders from cache with reference counting
+            // if (this.shaderParticleUpdateRespawn) this.shaderParticleUpdateRespawn.destroy();
+            // if (this.shaderParticleUpdateNoRespawn) this.shaderParticleUpdateNoRespawn.destroy();
+            // if (this.shaderParticleUpdateOnStop) this.shaderParticleUpdateOnStop.destroy();
 
             this.particleTexIN = null;
             this.particleTexOUT = null;
@@ -1483,37 +1500,9 @@ pc.extend(pc, function () {
             this.shaderParticleUpdateNoRespawn = null;
             this.shaderParticleUpdateOnStop = null;
         }
-    };
+    });
 
     return {
         ParticleEmitter: ParticleEmitter
     };
 }());
-
-function frac(f) {
-    return f - Math.floor(f);
-}
-
-function encodeFloatRGBA( v ) {
-    var encX = frac(v);
-    var encY = frac(255.0 * v);
-    var encZ = frac(65025.0 * v);
-    var encW = frac(160581375.0 * v);
-
-    encX -= encY / 255.0;
-    encY -= encZ / 255.0;
-    encZ -= encW / 255.0;
-    encW -= encW / 255.0;
-
-    return [encX, encY, encZ, encW];
-}
-
-function encodeFloatRG( v ) {
-    var encX = frac(v);
-    var encY = frac(255.0 * v);
-
-    encX -= encY / 255.0;
-    encY -= encY / 255.0;
-
-    return [encX, encY];
-}

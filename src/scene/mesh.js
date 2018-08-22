@@ -1,4 +1,4 @@
-pc.extend(pc, function () {
+Object.assign(pc, function () {
     var id = 0;
     var _tmpAabb = new pc.BoundingBox();
 
@@ -104,6 +104,7 @@ pc.extend(pc, function () {
         this._shaderDefs |= mesh.vertexBuffer.format.hasUv0 ? pc.SHADERDEF_UV0 : 0;
         this._shaderDefs |= mesh.vertexBuffer.format.hasUv1 ? pc.SHADERDEF_UV1 : 0;
         this._shaderDefs |= mesh.vertexBuffer.format.hasColor ? pc.SHADERDEF_VCOLOR : 0;
+        this._shaderDefs |= mesh.vertexBuffer.format.hasTangents ? pc.SHADERDEF_TANGENTS : 0;
 
         this._lightHash = 0;
 
@@ -486,7 +487,7 @@ pc.extend(pc, function () {
         }
     });
 
-    pc.extend(MeshInstance.prototype, {
+    Object.assign(MeshInstance.prototype, {
         syncAabb: function () {
             // Deprecated
         },
@@ -530,24 +531,22 @@ pc.extend(pc, function () {
         this._buffer = null;
     };
 
-    InstancingData.prototype = {
+    Object.assign(InstancingData.prototype, {
         update: function () {
             if (this._buffer) {
                 this._buffer.setData(this.buffer);
             }
         }
-    };
+    });
 
     function getKey(layer, blendType, isCommand, materialId) {
-        /*
-         * Key definition:
-         * Bit
-         * 31      : sign bit (leave)
-         * 27 - 30 : layer
-         * 26      : translucency type (opaque/transparent)
-         * 25      : Command bit (1: this key is for a command, 0: it's a mesh instance)
-         * 0 - 24  : Material ID (if oqaque) or 0 (if transparent - will be depth)
-         */
+        // Key definition:
+        // Bit
+        // 31      : sign bit (leave)
+        // 27 - 30 : layer
+        // 26      : translucency type (opaque/transparent)
+        // 25      : Command bit (1: this key is for a command, 0: it's a mesh instance)
+        // 0 - 24  : Material ID (if oqaque) or 0 (if transparent - will be depth)
         return ((layer & 0x0f) << 27) |
                ((blendType === pc.BLEND_NONE ? 1 : 0) << 26) |
                ((isCommand ? 1 : 0) << 25) |

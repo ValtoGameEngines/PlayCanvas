@@ -1,4 +1,4 @@
-pc.extend(pc, function () {
+Object.assign(pc, function () {
     'use strict';
 
     // checks if user is running IE
@@ -25,7 +25,7 @@ pc.extend(pc, function () {
         this.manager = manager;
     };
 
-    AudioHandler.prototype = {
+    Object.assign(AudioHandler.prototype, {
         _isSupported: function (url) {
             var toMIME = {
                 '.ogg': 'audio/ogg',
@@ -71,7 +71,7 @@ pc.extend(pc, function () {
         open: function (url, data) {
             return data;
         }
-    };
+    });
 
     if (pc.SoundManager.hasAudioContext()) {
         /**
@@ -119,10 +119,8 @@ pc.extend(pc, function () {
             try {
                 audio = new Audio();
             } catch (e) {
-                /*
-                 * Some windows platforms will report Audio as available, then throw an exception when
-                 * the object is created.
-                 */
+                // Some windows platforms will report Audio as available, then throw an exception when
+                // the object is created.
                 error("No support for Audio element");
                 return;
             }

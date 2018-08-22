@@ -1,4 +1,4 @@
-pc.extend(pc, function () {
+Object.assign(pc, function () {
     var keyA, keyB, sortPos, sortDir;
 
     function sortManual(drawCallA, drawCallB) {
@@ -49,6 +49,18 @@ pc.extend(pc, function () {
         // arrays of VisibleInstanceList for each camera
         this.visibleOpaque = [];
         this.visibleTransparent = [];
+    };
+
+    InstanceList.prototype.clearVisibleLists = function (cameraPass) {
+        if (this.visibleOpaque[cameraPass]) {
+            this.visibleOpaque[cameraPass].length = 0;
+            this.visibleOpaque[cameraPass].list.length = 0;
+        }
+
+        if (this.visibleTransparent[cameraPass]) {
+            this.visibleTransparent[cameraPass].length = 0;
+            this.visibleTransparent[cameraPass].list.length = 0;
+        }
     };
 
     /**
@@ -206,6 +218,9 @@ pc.extend(pc, function () {
         this.transparentMeshInstances = this.instances.transparentMeshInstances;
         this.shadowCasters = this.instances.shadowCasters;
 
+        this.customSortCallback = null;
+        this.customCalculateSortValues = null;
+
         this._lightComponents = [];
         this._lights = [];
         this._sortedLights = [[], [], []];
@@ -346,15 +361,13 @@ pc.extend(pc, function () {
         this._refCounter--;
     };
 
-    /*
-     * SUBLAYER GROUPS
-     * If there are multiple sublayer with identical _cameraHash without anything in between, these are called a SUBLAYER GROUP
-     * instead of
-     *     for each sublayer
-     *         for each camera
-     * we go
-     *     for each sublayerGroup
-     */
+    // SUBLAYER GROUPS
+    // If there are multiple sublayer with identical _cameraHash without anything in between, these
+    // are called a SUBLAYER GROUP instead of:
+    //     for each sublayer
+    //         for each camera
+    // we go:
+    //     for each sublayerGroup
 
     /**
      * @function
@@ -547,10 +560,8 @@ pc.extend(pc, function () {
     };
 
     Layer.prototype._generateLightHash = function () {
-        /*
-         * generate hash to check if layers have the same set of static lights
-         * order of lights shouldn't matter
-         */
+        // generate hash to check if layers have the same set of static lights
+        // order of lights shouldn't matter
         if (this._lights.length > 0) {
             this._lights.sort(sortLights);
             var str = "";
@@ -583,10 +594,8 @@ pc.extend(pc, function () {
     };
 
     Layer.prototype._generateCameraHash = function () {
-        /*
-         * generate hash to check if cameras in layers are identical
-         * order of cameras shouldn't matter
-         */
+        // generate hash to check if cameras in layers are identical
+        // order of cameras shouldn't matter
         if (this.cameras.length > 1) {
             this.cameras.sort(sortCameras);
             var str = "";
@@ -623,6 +632,10 @@ pc.extend(pc, function () {
         if (id < 0) return;
         this.cameras.splice(id, 1);
         this._generateCameraHash();
+
+        // visible lists in layer are not updated after camera is removed
+        // so clear out any remaining mesh instances
+        this.instances.clearVisibleLists(id);
     };
 
     /**
@@ -659,17 +672,36 @@ pc.extend(pc, function () {
         var objects = this.instances;
         var sortMode = transparent ? this.transparentSortMode : this.opaqueSortMode;
         if (sortMode === pc.SORTMODE_NONE) return;
+
         var visible = transparent ? objects.visibleTransparent[cameraPass] : objects.visibleOpaque[cameraPass];
-        if (sortMode === pc.SORTMODE_BACK2FRONT || sortMode === pc.SORTMODE_FRONT2BACK) {
+
+        if (sortMode === pc.SORTMODE_CUSTOM) {
             sortPos = cameraNode.getPosition().data;
             sortDir = cameraNode.forward.data;
-            this._calculateSortDistances(visible.list, visible.length, sortPos, sortDir);
-        }
+            if (this.customCalculateSortValues) {
+                this.customCalculateSortValues(visible.list, visible.length, sortPos, sortDir);
+            }
 
-        if (visible.list.length !== visible.length) {
-            visible.list.length = visible.length;
+            if (visible.list.length !== visible.length) {
+                visible.list.length = visible.length;
+            }
+
+            if (this.customSortCallback) {
+                visible.list.sort(this.customSortCallback);
+            }
+        } else {
+            if (sortMode === pc.SORTMODE_BACK2FRONT || sortMode === pc.SORTMODE_FRONT2BACK) {
+                sortPos = cameraNode.getPosition().data;
+                sortDir = cameraNode.forward.data;
+                this._calculateSortDistances(visible.list, visible.length, sortPos, sortDir);
+            }
+
+            if (visible.list.length !== visible.length) {
+                visible.list.length = visible.length;
+            }
+
+            visible.list.sort(sortCallbacks[sortMode]);
         }
-        visible.list.sort(sortCallbacks[sortMode]);
     };
 
     return {

@@ -1,4 +1,4 @@
-pc.extend(pc, function () {
+Object.assign(pc, function () {
     // Shared math variable to avoid excessive allocation
     var ammoTransform;
     var ammoVec1, ammoVec2, ammoQuat, ammoOrigin;
@@ -46,6 +46,8 @@ pc.extend(pc, function () {
      * Defaults to pc.BODYTYPE_STATIC.
      */
     var RigidBodyComponent = function RigidBodyComponent(system, entity) {
+        pc.Component.call(this, system, entity);
+
         // Lazily create shared variable
         if (typeof Ammo !== 'undefined' && !ammoTransform) {
             ammoTransform = new Ammo.btTransform();
@@ -73,7 +75,8 @@ pc.extend(pc, function () {
         this._linearVelocity = new pc.Vec3(0, 0, 0);
         this._angularVelocity = new pc.Vec3(0, 0, 0);
     };
-    RigidBodyComponent = pc.inherits(RigidBodyComponent, pc.Component);
+    RigidBodyComponent.prototype = Object.create(pc.Component.prototype);
+    RigidBodyComponent.prototype.constructor = RigidBodyComponent;
 
     Object.defineProperty(RigidBodyComponent.prototype, "bodyType", {
         get: function () {
@@ -130,7 +133,7 @@ pc.extend(pc, function () {
         }
     });
 
-    pc.extend(RigidBodyComponent.prototype, {
+    Object.assign(RigidBodyComponent.prototype, {
         /**
          * @private
          * @function
@@ -144,10 +147,8 @@ pc.extend(pc, function () {
             if (entity.collision) {
                 shape = entity.collision.shape;
 
-                /*
-                 * if a trigger was already created from the collision system
-                 * destroy it
-                 */
+                // if a trigger was already created from the collision system
+                // destroy it
                 if (entity.trigger) {
                     entity.trigger.destroy();
                     delete entity.trigger;
@@ -258,10 +259,8 @@ pc.extend(pc, function () {
             var body = this.body;
             if (body && this.data.simulationEnabled) {
                 this.system.removeBody(body);
-                /*
-                 * set activation state to disable simulation to avoid body.isActive() to return
-                 * true even if it's not in the dynamics world
-                 */
+                // set activation state to disable simulation to avoid body.isActive() to return
+                // true even if it's not in the dynamics world
                 body.forceActivationState(pc.BODYSTATE_DISABLE_SIMULATION);
 
                 this.data.simulationEnabled = false;
@@ -687,7 +686,7 @@ pc.extend(pc, function () {
         },
 
         onEnable: function () {
-            RigidBodyComponent._super.onEnable.call(this);
+            pc.Component.prototype.onEnable.call(this);
             if (!this.body) {
                 this.createBody();
             }
@@ -696,7 +695,7 @@ pc.extend(pc, function () {
         },
 
         onDisable: function () {
-            RigidBodyComponent._super.onDisable.call(this);
+            pc.Component.prototype.onDisable.call(this);
             this.disableSimulation();
         },
 

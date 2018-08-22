@@ -1,4 +1,4 @@
-pc.extend(pc, function () {
+Object.assign(pc, function () {
     /**
      * @component Animation
      * @constructor
@@ -16,6 +16,8 @@ pc.extend(pc, function () {
      * @property {Number} duration Get the duration in seconds of the current animation.
      */
     var AnimationComponent = function (system, entity) {
+        pc.Component.call(this, system, entity);
+
         this.animationsIndex = { };
 
         // Handle changes to the 'animations' value
@@ -25,9 +27,10 @@ pc.extend(pc, function () {
         // Handle changes to the 'loop' value
         this.on('set_loop', this.onSetLoop, this);
     };
-    AnimationComponent = pc.inherits(AnimationComponent, pc.Component);
+    AnimationComponent.prototype = Object.create(pc.Component.prototype);
+    AnimationComponent.prototype.constructor = AnimationComponent;
 
-    pc.extend(AnimationComponent.prototype, {
+    Object.assign(AnimationComponent.prototype, {
         /**
          * @function
          * @name pc.AnimationComponent#play
@@ -56,10 +59,8 @@ pc.extend(pc, function () {
             if (data.model) {
                 data.blending = blendTime > 0 && data.prevAnim;
                 if (data.blending) {
-                    /*
-                     * Blend from the current time of the current animation to the start of
-                     * the newly specified animation over the specified blend time period.
-                     */
+                    // Blend from the current time of the current animation to the start of
+                    // the newly specified animation over the specified blend time period.
                     data.blendTime = blendTime;
                     data.blendTimeRemaining = blendTime;
                     data.fromSkel.animation = data.animations[data.prevAnim];
@@ -246,7 +247,7 @@ pc.extend(pc, function () {
         },
 
         onEnable: function () {
-            AnimationComponent._super.onEnable.call(this);
+            pc.Component.prototype.onEnable.call(this);
 
             // load assets if they're not loaded
             var assets = this.data.assets;

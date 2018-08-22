@@ -1,4 +1,4 @@
-pc.extend(pc, function () {
+Object.assign(pc, function () {
     var _schema = [
         'enabled',
         'clearColorBuffer',
@@ -39,6 +39,8 @@ pc.extend(pc, function () {
      * @extends pc.ComponentSystem
      */
     var CameraComponentSystem = function (app) {
+        pc.ComponentSystem.call(this, app);
+
         this.id = 'camera';
         this.description = "Renders the scene from the location of the Entity.";
         app.systems.add(this.id, this);
@@ -56,11 +58,12 @@ pc.extend(pc, function () {
 
         pc.ComponentSystem.on('update', this.onUpdate, this);
     };
-    CameraComponentSystem = pc.inherits(CameraComponentSystem, pc.ComponentSystem);
+    CameraComponentSystem.prototype = Object.create(pc.ComponentSystem.prototype);
+    CameraComponentSystem.prototype.constructor = CameraComponentSystem;
 
     pc.Component._buildAccessors(pc.CameraComponent.prototype, _schema);
 
-    pc.extend(CameraComponentSystem.prototype, {
+    Object.assign(CameraComponentSystem.prototype, {
         initializeComponentData: function (component, _data, properties) {
             properties = [
                 'postEffects',
@@ -141,7 +144,7 @@ pc.extend(pc, function () {
 
             data.postEffects = new pc.PostEffectQueue(this.app, component);
 
-            CameraComponentSystem._super.initializeComponentData.call(this, component, data, properties);
+            pc.ComponentSystem.prototype.initializeComponentData.call(this, component, data, properties);
         },
 
         onBeforeRemove: function (entity, component) {

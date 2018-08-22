@@ -1,11 +1,11 @@
-pc.extend(pc, function () {
+Object.assign(pc, function () {
     'use strict';
 
     var FontHandler = function (loader) {
         this._loader = loader;
     };
 
-    FontHandler.prototype = {
+    Object.assign(FontHandler.prototype, {
         load: function (url, callback, asset) {
             var self = this;
             if (pc.path.getExtension(url) === '.json') {
@@ -83,10 +83,8 @@ pc.extend(pc, function () {
         },
 
         patch: function (asset, assets) {
-            /*
-             * if not already set, get font data block from asset
-             * and assign to font resource
-             */
+            // if not already set, get font data block from asset
+            // and assign to font resource
             var font = asset.resource;
             if (!font.data && asset.data) {
                 // font data present in asset but not in font
@@ -96,7 +94,7 @@ pc.extend(pc, function () {
                 asset.data = font.data;
             }
         }
-    };
+    });
 
     return {
         FontHandler: FontHandler

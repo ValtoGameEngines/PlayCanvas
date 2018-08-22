@@ -1,4 +1,4 @@
-pc.extend(pc, function () {
+Object.assign(pc, function () {
     /**
      * @constructor
      * @name pc.VrDisplay
@@ -66,10 +66,8 @@ pc.extend(pc, function () {
                 // this was used in the webvr emulation chrome extension
                 display = event.detail.vrdisplay;
             } else {
-                /*
-                 * final catch all is to use this display as Firefox Nightly (54.0a1)
-                 * does not include the display within the event data
-                 */
+                // final catch all is to use this display as Firefox Nightly (54.0a1)
+                // does not include the display within the event data
                 display = self.display;
             }
 
@@ -101,7 +99,7 @@ pc.extend(pc, function () {
         pc.events.attach(this);
     };
 
-    VrDisplay.prototype = {
+    Object.assign(VrDisplay.prototype, {
         /**
          * @function
          * @name pc.VrDisplay#destroy
@@ -141,10 +139,8 @@ pc.extend(pc, function () {
                     this.rightView.set(this._frameData.rightViewMatrix);
                 }
 
-                /*
-                 * Find combined position and view matrix
-                 * Camera is offset backwards to cover both frustums
-                 */
+                // Find combined position and view matrix
+                // Camera is offset backwards to cover both frustums
 
                 // Extract widest frustum plane and calculate fov
                 var nx = this.leftProj.data[3] + this.leftProj.data[0];
@@ -314,7 +310,7 @@ pc.extend(pc, function () {
         getFrameData: function () {
             if (this.display) return this._frameData;
         }
-    };
+    });
 
     Object.defineProperty(VrDisplay.prototype, "capabilities", {
         get: function () {

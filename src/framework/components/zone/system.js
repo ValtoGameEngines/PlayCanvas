@@ -1,15 +1,18 @@
-pc.extend(pc, function () {
+Object.assign(pc, function () {
     var _schema = ['enabled'];
 
     /**
+     * @private
+     * @constructor
      * @name pc.ZoneComponentSystem
-     * @description Create a new ZoneComponentSystem
-     * @class Defines zone in world.
-     * @param {pc.Application} app The application
+     * @classdesc Defines zone in world.
+     * @description Create a new ZoneComponentSystem.
+     * @param {pc.Application} app The application.
      * @extends pc.ComponentSystem
      */
-
     var ZoneComponentSystem = function ZoneComponentSystem(app) {
+        pc.ComponentSystem.call(this, app);
+
         this.id = 'zone';
         this.app = app;
         app.systems.add(this.id, this);
@@ -21,11 +24,12 @@ pc.extend(pc, function () {
 
         this.on('beforeremove', this._onBeforeRemove, this);
     };
-    ZoneComponentSystem = pc.inherits(ZoneComponentSystem, pc.ComponentSystem);
+    ZoneComponentSystem.prototype = Object.create(pc.ComponentSystem.prototype);
+    ZoneComponentSystem.prototype.constructor = ZoneComponentSystem;
 
     pc.Component._buildAccessors(pc.ZoneComponent.prototype, _schema);
 
-    pc.extend(ZoneComponentSystem.prototype, {
+    Object.assign(ZoneComponentSystem.prototype, {
         initializeComponentData: function (component, data, properties) {
             component.enabled = data.hasOwnProperty('enabled') ? !!data.enabled : true;
 

@@ -1,4 +1,4 @@
-pc.extend(pc, function () {
+Object.assign(pc, function () {
     /**
      * @component
      * @constructor
@@ -102,12 +102,15 @@ pc.extend(pc, function () {
      * @extends pc.Component
      */
     var LightComponent = function LightComponent(system, entity) {
+        pc.Component.call(this, system, entity);
+
         this._cookieAsset = null;
         this._cookieAssetId = null;
         this._cookieAssetAdd = false;
         this._cookieMatrix = null;
     };
-    LightComponent = pc.inherits(LightComponent, pc.Component);
+    LightComponent.prototype = Object.create(pc.Component.prototype);
+    LightComponent.prototype.constructor = LightComponent;
 
     var _props = [];
     var _propsDefault = [];
@@ -139,10 +142,8 @@ pc.extend(pc, function () {
         _defineProperty("light", null);
         _defineProperty("type", 'directional', function (newValue, oldValue) {
             this.system.changeType(this, oldValue, newValue);
-            /*
-             * refresh light properties because changing the type does not reset the
-             * light properties
-             */
+            // refresh light properties because changing the type does not reset the
+            // light properties
             this.refreshProperties();
         });
         _defineProperty("color", new pc.Color(1, 1, 1), function (newValue, oldValue) {
@@ -327,7 +328,7 @@ pc.extend(pc, function () {
         }
     });
 
-    pc.extend(LightComponent.prototype, {
+    Object.assign(LightComponent.prototype, {
 
         addLightToLayers: function () {
             var layer;
@@ -439,7 +440,7 @@ pc.extend(pc, function () {
         },
 
         onEnable: function () {
-            LightComponent._super.onEnable.call(this);
+            pc.Component.prototype.onEnable.call(this);
             this.light.enabled = true;
 
             this.system.app.scene.on("set:layers", this.onLayersChanged, this);
@@ -457,7 +458,7 @@ pc.extend(pc, function () {
         },
 
         onDisable: function () {
-            LightComponent._super.onDisable.call(this);
+            pc.Component.prototype.onDisable.call(this);
             this.light.enabled = false;
 
             this.system.app.scene.off("set:layers", this.onLayersChanged, this);

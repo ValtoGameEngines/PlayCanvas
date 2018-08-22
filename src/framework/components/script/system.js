@@ -1,4 +1,4 @@
-pc.extend(pc, function () {
+Object.assign(pc, function () {
     var _schema = ['enabled'];
 
     /**
@@ -10,6 +10,8 @@ pc.extend(pc, function () {
      */
 
     var ScriptComponentSystem = function ScriptComponentSystem(app) {
+        pc.ComponentSystem.call(this, app);
+
         this.id = 'script';
         this.app = app;
         app.systems.add(this.id, this);
@@ -32,11 +34,12 @@ pc.extend(pc, function () {
         pc.ComponentSystem.on('update', this._onUpdate, this);
         pc.ComponentSystem.on('postUpdate', this._onPostUpdate, this);
     };
-    ScriptComponentSystem = pc.inherits(ScriptComponentSystem, pc.ComponentSystem);
+    ScriptComponentSystem.prototype = Object.create(pc.ComponentSystem.prototype);
+    ScriptComponentSystem.prototype.constructor = ScriptComponentSystem;
 
     pc.Component._buildAccessors(pc.ScriptComponent.prototype, _schema);
 
-    pc.extend(ScriptComponentSystem.prototype, {
+    Object.assign(ScriptComponentSystem.prototype, {
         initializeComponentData: function (component, data, properties) {
             this._components.push(component);
 
@@ -76,8 +79,9 @@ pc.extend(pc, function () {
             }
 
             for (key in entity.script._scriptsIndex) {
-                if (key.awayting)
+                if (key.awaiting) {
                     order.splice(key.ind, 0, key);
+                }
             }
 
             var data = {
@@ -153,17 +157,13 @@ pc.extend(pc, function () {
 
             component._onBeforeRemove();
 
-            /*
-             * if we are not currently looping through components then
-             * remove the components from our list
-             */
+            // if we are not currently looping through components then
+            // remove the components from our list
             if (!this._isLoopingThroughComponents) {
                 this._components.splice(ind, 1);
             } else {
-                /*
-                 * otherwise push it to be destroyed when
-                 * the current loop is over
-                 */
+                // otherwise push it to be destroyed when
+                // the current loop is over
                 component._destroyed = true;
                 this._destroyedComponents.push(component);
             }

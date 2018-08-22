@@ -1,4 +1,4 @@
-pc.extend(pc, function () {
+Object.assign(pc, function () {
     /**
      * @component
      * @name pc.ScriptComponent
@@ -11,6 +11,8 @@ pc.extend(pc, function () {
      */
 
     var ScriptComponent = function ScriptComponent(system, entity) {
+        pc.Component.call(this, system, entity);
+
         this._scripts = [];
         this._scriptsIndex = {};
         this._destroyedScripts = [];
@@ -21,7 +23,8 @@ pc.extend(pc, function () {
         this._isLoopingThroughScripts = false;
         this.on('set_enabled', this._onSetEnabled, this);
     };
-    ScriptComponent = pc.inherits(ScriptComponent, pc.Component);
+    ScriptComponent.prototype = Object.create(pc.Component.prototype);
+    ScriptComponent.prototype.constructor = ScriptComponent;
 
     ScriptComponent.scriptMethods = {
         initialize: 'initialize',
@@ -161,9 +164,9 @@ pc.extend(pc, function () {
      * });
      */
 
-    pc.extend(ScriptComponent.prototype, {
+    Object.assign(ScriptComponent.prototype, {
         onEnable: function () {
-            ScriptComponent._super.onEnable.call(this);
+            pc.Component.prototype.onEnable.call(this);
             this._beingEnabled = true;
             this._checkState();
 
@@ -175,7 +178,7 @@ pc.extend(pc, function () {
         },
 
         onDisable: function () {
-            ScriptComponent._super.onDisable.call(this);
+            pc.Component.prototype.onDisable.call(this);
             this._checkState();
         },
 
@@ -198,20 +201,16 @@ pc.extend(pc, function () {
             this._endLooping(wasLooping);
         },
 
-        /*
-         * Sets isLoopingThroughScripts to false and returns
-         * its previous value
-         */
+        // Sets isLoopingThroughScripts to false and returns
+        // its previous value
         _beginLooping: function () {
             var looping = this._isLoopingThroughScripts;
             this._isLoopingThroughScripts = true;
             return looping;
         },
 
-        /*
-         * Restores isLoopingThroughScripts to the specified parameter
-         * If all loops are over then remove destroyed scripts form the _scripts array
-         */
+        // Restores isLoopingThroughScripts to the specified parameter
+        // If all loops are over then remove destroyed scripts form the _scripts array
         _endLooping: function (wasLoopingBefore) {
             this._isLoopingThroughScripts = wasLoopingBefore;
             if (!this._isLoopingThroughScripts) {
@@ -219,11 +218,9 @@ pc.extend(pc, function () {
             }
         },
 
-        /*
-         * We also need this handler because it is fired
-         * when value === old instead of onEnable and onDisable
-         * which are only fired when value !== old
-         */
+        // We also need this handler because it is fired
+        // when value === old instead of onEnable and onDisable
+        // which are only fired when value !== old
         _onSetEnabled: function (prop, old, value) {
             this._beingEnabled = true;
             this._checkState();
@@ -506,18 +503,14 @@ pc.extend(pc, function () {
                 scriptData.instance.enabled = false;
                 scriptData.instance._destroyed = true;
 
-                /*
-                 * if we are not currently looping through our scripts
-                 * then it's safe to remove the script
-                 */
+                // if we are not currently looping through our scripts
+                // then it's safe to remove the script
                 if (!this._isLoopingThroughScripts) {
                     var ind = this._scripts.indexOf(scriptData.instance);
                     this._scripts.splice(ind, 1);
                 } else {
-                    /*
-                     * otherwise push the script in _destroyedScripts and
-                     * remove it from _scripts when the loop is over
-                     */
+                    // otherwise push the script in _destroyedScripts and
+                    // remove it from _scripts when the loop is over
                     this._destroyedScripts.push(scriptData.instance);
                 }
             }
@@ -572,6 +565,102 @@ pc.extend(pc, function () {
             this.fire('swap:' + scriptType.__name, scriptInstance);
 
             return true;
+        },
+
+        /**
+         * @function
+         * @private
+         * @name pc.ScriptComponent#resolveDuplicatedEntityReferenceProperties
+         * @description When an entity is cloned and it has entity script attributes that point
+         * to other entities in the same subtree that is cloned, then we want the new script attributes to point
+         * at the cloned entities. This method remaps the script attributes for this entity and it assumes that this
+         * entity is the result of the clone operation.
+         * @param {pc.ScriptComponent} oldScriptComponent The source script component that belongs to the entity that was being cloned.
+         * @param {Object} duplicatedIdsMap A dictionary with guid-entity values that contains the entities that were cloned
+         */
+        resolveDuplicatedEntityReferenceProperties: function (oldScriptComponent, duplicatedIdsMap) {
+            var newScriptComponent = this.entity.script;
+
+            // for each script in the old compononent
+            for (var scriptName in oldScriptComponent._scriptsIndex) {
+                // get the script type from the script registry
+                var scriptType = this.system.app.scripts.get(scriptName);
+                if (! scriptType) {
+                    continue;
+                }
+
+                // get the script from the component's index
+                var script = oldScriptComponent._scriptsIndex[scriptName];
+                if (! script || ! script.instance) {
+                    continue;
+                }
+
+                // if __attributesRaw exists then it means that the new entity
+                // has not yet initialized its attributes so put the new guid in there,
+                // otherwise it means that the attributes have already been initialized
+                // so convert the new guid to an entity
+                // and put it in the new attributes
+                var newAttributesRaw = newScriptComponent[scriptName].__attributesRaw;
+                var newAttributes = newScriptComponent[scriptName].__attributes;
+                if (! newAttributesRaw && ! newAttributes) {
+                    continue;
+                }
+
+                // get the old script attributes from the instance
+                var oldAttributes = script.instance.__attributes;
+                for (var attributeName in oldAttributes) {
+                    if (! oldAttributes[attributeName]) {
+                        continue;
+                    }
+
+                    // get the attribute definition from the script type
+                    var attribute = scriptType.attributes.get(attributeName);
+                    if (! attribute || attribute.type !== 'entity') {
+                        continue;
+                    }
+
+                    if (attribute.array) {
+                        // handle entity array attribute
+                        var oldGuidArray = oldAttributes[attributeName];
+                        var len = oldGuidArray.length;
+                        if (! len) {
+                            continue;
+                        }
+
+                        var newGuidArray = oldGuidArray.slice();
+                        for (var i = 0; i < len; i++) {
+                            var guid = newGuidArray[i] instanceof pc.Entity ? newGuidArray[i].getGuid() : newGuidArray[i];
+                            if (duplicatedIdsMap[guid]) {
+                                // if we are using attributesRaw then use the guid otherwise use the entity
+                                newGuidArray[i] = newAttributesRaw ? duplicatedIdsMap[guid].getGuid() : duplicatedIdsMap[guid];
+                            }
+                        }
+
+                        if (newAttributesRaw) {
+                            newAttributesRaw[attributeName] = newGuidArray;
+                        } else {
+                            newAttributes[attributeName] = newGuidArray;
+                        }
+                    } else {
+                        // handle regular entity attribute
+                        var oldGuid = oldAttributes[attributeName];
+                        if (oldGuid instanceof pc.Entity) {
+                            oldGuid = oldGuid.getGuid();
+                        } else if (typeof oldGuid !== 'string') {
+                            continue;
+                        }
+
+                        if (duplicatedIdsMap[oldGuid]) {
+                            if (newAttributesRaw) {
+                                newAttributesRaw[attributeName] = duplicatedIdsMap[oldGuid].getGuid();
+                            } else {
+                                newAttributes[attributeName] = duplicatedIdsMap[oldGuid];
+                            }
+                        }
+
+                    }
+                }
+            }
         },
 
         /**
@@ -649,10 +738,8 @@ pc.extend(pc, function () {
                         }
                     }
                 } else {
-                    /*
-                     * TODO scripts2
-                     * new script
-                     */
+                    // TODO scripts2
+                    // new script
                     console.log(this.order);
                 }
             }

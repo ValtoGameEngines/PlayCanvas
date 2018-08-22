@@ -1,4 +1,4 @@
-pc.extend(pc, function () {
+Object.assign(pc, function () {
     'use strict';
 
     var JSON_PRIMITIVE_TYPE = {
@@ -26,7 +26,7 @@ pc.extend(pc, function () {
         this._device = device;
     };
 
-    JsonModelParser.prototype = {
+    Object.assign(JsonModelParser.prototype, {
         parse: function (data) {
             var modelData = data.model;
             if (!modelData) {
@@ -548,20 +548,10 @@ pc.extend(pc, function () {
                 for (attributeName in vertexData) {
                     attribute = vertexData[attributeName];
 
-                    var attribType = attribute.type;
-                    if (!this._device.supportsUnsignedByte) {
-                        if (attribType === "uint8") {
-                            attribType = "float32";
-                        }
-                        if (attribType === "int8") {
-                            attribType = "float32";
-                        }
-                    }
-
                     formatDesc.push({
                         semantic: attributeMap[attributeName],
                         components: attribute.components,
-                        type: JSON_VERTEX_ELEMENT_TYPE[attribType],
+                        type: JSON_VERTEX_ELEMENT_TYPE[attribute.type],
                         normalize: (attributeMap[attributeName] === pc.SEMANTIC_COLOR)
                     });
                 }
@@ -721,7 +711,7 @@ pc.extend(pc, function () {
 
             return meshInstances;
         }
-    };
+    });
 
     return {
         JsonModelParser: JsonModelParser

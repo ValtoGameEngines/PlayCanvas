@@ -1,4 +1,4 @@
-pc.extend(pc, function () {
+Object.assign(pc, function () {
     var rawToValue = function (app, args, value, old) {
         var i;
 
@@ -317,6 +317,10 @@ pc.extend(pc, function () {
          * because the Entity or any of its parents are disabled or the Script Component is disabled or the Script Instance is disabled.
          * When disabled no update methods will be called on each tick.
          * initialize and postInitialize methods will run once when the script instance is in `enabled` state during app tick.
+         * @param {Object} args The input arguments object
+         * @param {Object} args.app The {@link pc.Application} that is running the script
+         * @param {Object} args.entity The {@link pc.Entity} that the script is attached to
+         *
          */
         var script = function (args) {
             // #ifdef DEBUG
@@ -532,13 +536,11 @@ pc.extend(pc, function () {
                         this.entity.script._scriptMethod(this, pc.ScriptComponent.scriptMethods.initialize);
                 }
 
-                /*
-                 * post initialize script if not post initialized yet and still enabled
-                 * (initilize might have disabled the script so check this.enabled again)
-                 * Warning: Do not do this if the script component is currently being enabled
-                 * because in this case post initialize must be called after all the scripts
-                 * in the script component have been initialized first
-                 */
+                // post initialize script if not post initialized yet and still enabled
+                // (initilize might have disabled the script so check this.enabled again)
+                // Warning: Do not do this if the script component is currently being enabled
+                // because in this case post initialize must be called after all the scripts
+                // in the script component have been initialized first
                 if (this._initialized && !this._postInitialized && this.enabled && !this.entity.script._beingEnabled) {
                     this._postInitialized = true;
 

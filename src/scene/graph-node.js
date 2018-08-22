@@ -1,4 +1,4 @@
-pc.extend(pc, function () {
+Object.assign(pc, function () {
     var scaleCompensatePosTransform = new pc.Mat4();
     var scaleCompensatePos = new pc.Vec3();
     var scaleCompensateRot = new pc.Quat();
@@ -100,11 +100,9 @@ pc.extend(pc, function () {
      */
     Object.defineProperty(GraphNode.prototype, 'enabled', {
         get: function () {
-            /*
-             * make sure to check this._enabled too because if that
-             * was false when a parent was updated the _enabledInHierarchy
-             * flag may not have been updated for optimization purposes
-             */
+            // make sure to check this._enabled too because if that
+            // was false when a parent was updated the _enabledInHierarchy
+            // flag may not have been updated for optimization purposes
             return this._enabled && this._enabledInHierarchy;
         },
 
@@ -173,7 +171,7 @@ pc.extend(pc, function () {
         }
     });
 
-    pc.extend(GraphNode.prototype, {
+    Object.assign(GraphNode.prototype, {
         _notifyHierarchyStateChanged: function (node, enabled) {
             node._onHierarchyStateChanged(enabled);
 
@@ -203,7 +201,7 @@ pc.extend(pc, function () {
             for (var i = 0; i < tags.length; i++)
                 clone.tags.add(tags[i]);
 
-            clone._labels = pc.extend(this._labels, {});
+            clone._labels = Object.assign({}, this._labels);
 
             clone.localPosition.copy(this.localPosition);
             clone.localRotation.copy(this.localRotation);
@@ -1102,20 +1100,16 @@ pc.extend(pc, function () {
         _onInsertChild: function (node) {
             node._parent = this;
 
-            /*
-             * the child node should be enabled in the hierarchy only if itself is enabled and if
-             * this parent is enabled
-             */
+            // the child node should be enabled in the hierarchy only if itself is enabled and if
+            // this parent is enabled
             var enabledInHierarchy = (node._enabled && this.enabled);
             if (node._enabledInHierarchy !== enabledInHierarchy) {
                 node._enabledInHierarchy = enabledInHierarchy;
 
-                /*
-                 * propagate the change to the children - necessary if we reparent a node
-                 * under a parent with a different enabled state (if we reparent a node that is
-                 * not active in the hierarchy under a parent who is active in the hierarchy then
-                 * we want our node to be activated)
-                 */
+                // propagate the change to the children - necessary if we reparent a node
+                // under a parent with a different enabled state (if we reparent a node that is
+                // not active in the hierarchy under a parent who is active in the hierarchy then
+                // we want our node to be activated)
                 node._notifyHierarchyStateChanged(node, enabledInHierarchy);
             }
 
@@ -1322,8 +1316,10 @@ pc.extend(pc, function () {
             if (this._dirtyLocal || this._dirtyWorld)
                 this._sync();
 
-            for (var i = 0; i < this._children.length; i++)
-                this._children[i].syncHierarchy();
+            var children = this._children;
+            for (var i = 0, len = children.length; i < len; i++) {
+                children[i].syncHierarchy();
+            }
         },
 
         /**

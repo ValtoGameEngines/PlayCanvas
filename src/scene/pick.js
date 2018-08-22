@@ -1,4 +1,4 @@
-pc.extend(pc, function () {
+Object.assign(pc, function () {
 
     var _deviceDeprecationWarning = false;
     var _getSelectionDeprecationWarning = false;
@@ -147,18 +147,7 @@ pc.extend(pc, function () {
      * in any way, pc.Picker#prepare does not need to be called again.
      * @param {pc.CameraComponent} camera The camera component used to render the scene.
      * @param {pc.Scene} scene The scene containing the pickable mesh instances.
-     * @param {pc.Layer} [layer] Layer from which objects will be picked. If not supplied, all layers rendering to backbuffer before this layer will be used.
-     */
-    /**
-     * @function
-     * @name pc.Picker#prepare^2
-     * @description Primes the pick buffer with a rendering of the specified models from the point of view
-     * of the supplied camera. Once the pick buffer has been prepared, pc.Picker#getSelection can be
-     * called multiple times on the same picker object. Therefore, if the models or camera do not change
-     * in any way, pc.Picker#prepare does not need to be called again.
-     * @param {pc.CameraComponent} camera The camera component used to render the scene.
-     * @param {pc.Scene} scene The scene containing the pickable mesh instances.
-     * @param {pc.RenderTarget} [renderTarget] Render target with mesh instances to pick. If not supplied, backbuffer is assumed.
+     * @param {pc.Layer|pc.RenderTarget} [arg] Layer or RenderTarget from which objects will be picked. If not supplied, all layers rendering to backbuffer before this layer will be used.
      */
     Picker.prototype.prepare = function (camera, scene, arg) {
         var device = this.device;
@@ -226,10 +215,8 @@ pc.extend(pc, function () {
                     device.setBlending(false);
                 },
 
-                /*
-                 * could probably move updateCameraFrustum into onLayerPreRender function
-                 * and remove everything else
-                 */
+                // could probably move updateCameraFrustum into onLayerPreRender function
+                // and remove everything else
                 onPreCull: function () {
                     this.oldAspectMode = this.cameras[0].aspectRatioMode;
                     this.oldAspect = this.cameras[0].aspectRatio;
@@ -239,10 +226,8 @@ pc.extend(pc, function () {
                     self.app.renderer.updateCameraFrustum(this.cameras[0].camera);
                 },
 
-                /*
-                 * could probably remove this because we've moved
-                 * prerender/postrender to be outside of renderComposition
-                 */
+                // could probably remove this because we've moved
+                // prerender/postrender to be outside of renderComposition
                 onPostCull: function () {
                     this.cameras[0].aspectRatioMode = this.oldAspectMode;
                     this.cameras[0].aspectRatio = this.oldAspect;

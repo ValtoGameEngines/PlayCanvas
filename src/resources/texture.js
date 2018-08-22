@@ -1,4 +1,4 @@
-pc.extend(pc, function () {
+Object.assign(pc, function () {
     'use strict';
 
     var JSON_ADDRESS_MODE = {
@@ -43,7 +43,7 @@ pc.extend(pc, function () {
         }
     };
 
-    TextureHandler.prototype = {
+    Object.assign(TextureHandler.prototype, {
         load: function (url, callback) {
             var self = this;
             var image;
@@ -102,11 +102,9 @@ pc.extend(pc, function () {
 
                     image.src = url;
                 } else {
-                    /*
-                     * Unsupported texture extension
-                     * Use timeout because asset events can be hooked up after load gets called in some
-                     * cases. For example, material loads a texture on 'add' event.
-                     */
+                    // Unsupported texture extension
+                    // Use timeout because asset events can be hooked up after load gets called in some
+                    // cases. For example, material loads a texture on 'add' event.
                     setTimeout(function () {
                         callback(pc.string.format("Error loading Texture: format not supported: '{0}'", ext));
                     }, 0);
@@ -122,11 +120,9 @@ pc.extend(pc, function () {
             var ext = pc.path.getExtension(url).toLowerCase();
             var format = null;
 
-            /*
-             * Every browser seems to pass data as an Image type. For some reason, the XDK
-             * passes an HTMLImageElement. TODO: figure out why!
-             * DDS textures are ArrayBuffers
-             */
+            // Every browser seems to pass data as an Image type. For some reason, the XDK
+            // passes an HTMLImageElement. TODO: figure out why!
+            // DDS textures are ArrayBuffers
             if ((data instanceof Image) || (data instanceof HTMLImageElement)) { // PNG, JPG or GIF
                 var img = data;
 
@@ -316,7 +312,7 @@ pc.extend(pc, function () {
             if (asset.data.hasOwnProperty('rgbm') && texture.rgbm !== rgbm)
                 texture.rgbm = rgbm;
         }
-    };
+    });
 
     return {
         TextureHandler: TextureHandler

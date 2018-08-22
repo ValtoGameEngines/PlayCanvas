@@ -1,8 +1,7 @@
-pc.extend(pc, function () {
+Object.assign(pc, function () {
     'use strict';
 
     /**
-     * @private
      * @enum pc.SPRITETYPE
      * @name pc.SPRITETYPE_SIMPLE
      * @description A {@link pc.SpriteComponent} that displays a single frame from a sprite asset.
@@ -11,7 +10,6 @@ pc.extend(pc, function () {
 
 
     /**
-     * @private
      * @enum pc.SPRITETYPE
      * @name pc.SPRITETYPE_ANIMATED
      * @description A {@link pc.SpriteComponent} that renders sprite animations.
@@ -27,7 +25,6 @@ pc.extend(pc, function () {
     var PARAM_ATLAS_RECT = 'atlasRect';
 
     /**
-     * @private
      * @component
      * @constructor
      * @name pc.SpriteComponent
@@ -57,6 +54,8 @@ pc.extend(pc, function () {
      * @property {Number} drawOrder The draw order of the component. A higher value means that the component will be rendered on top of other components in the same layer.
      */
     var SpriteComponent = function SpriteComponent(system, entity) {
+        pc.Component.call(this, system, entity);
+
         this._type = pc.SPRITETYPE_SIMPLE;
         this._material = system.defaultMaterial;
         this._color = new pc.Color(1, 1, 1, 1);
@@ -104,11 +103,12 @@ pc.extend(pc, function () {
 
         this._currentClip = this._defaultClip;
     };
-    SpriteComponent = pc.inherits(SpriteComponent, pc.Component);
+    SpriteComponent.prototype = Object.create(pc.Component.prototype);
+    SpriteComponent.prototype.constructor = SpriteComponent;
 
-    pc.extend(SpriteComponent.prototype, {
+    Object.assign(SpriteComponent.prototype, {
         onEnable: function () {
-            SpriteComponent._super.onEnable.call(this);
+            pc.Component.prototype.onEnable.call(this);
 
             this.system.app.scene.on("set:layers", this._onLayersChanged, this);
             if (this.system.app.scene.layers) {
@@ -122,7 +122,7 @@ pc.extend(pc, function () {
         },
 
         onDisable: function () {
-            SpriteComponent._super.onDisable.call(this);
+            pc.Component.prototype.onDisable.call(this);
 
             this.system.app.scene.off("set:layers", this._onLayersChanged, this);
             if (this.system.app.scene.layers) {
@@ -132,6 +132,10 @@ pc.extend(pc, function () {
 
             this.stop();
             this._hideModel();
+
+            if (this._batchGroupId >= 0) {
+                this.system.app.batcher.markGroupDirty(this.batchGroupId);
+            }
         },
 
         onDestroy: function () {
@@ -412,7 +416,6 @@ pc.extend(pc, function () {
         },
 
         /**
-         * @private
          * @function
          * @name pc.SpriteComponent#addClip
          * @description Creates and adds a new {@link pc.SpriteAnimationClip} to the component's clips.
@@ -440,7 +443,6 @@ pc.extend(pc, function () {
         },
 
         /**
-         * @private
          * @function
          * @name pc.SpriteComponent#removeClip
          * @description Removes a clip by name.
@@ -451,7 +453,6 @@ pc.extend(pc, function () {
         },
 
         /**
-         * @private
          * @function
          * @name pc.SpriteComponent#clip
          * @description Get an animation clip by name.
@@ -463,7 +464,6 @@ pc.extend(pc, function () {
         },
 
         /**
-         * @private
          * @function
          * @name pc.SpriteComponent#play
          * @description Plays a sprite animation clip by name. If the animation clip is already playing then this will do nothing.
@@ -491,7 +491,6 @@ pc.extend(pc, function () {
         },
 
         /**
-         * @private
          * @function
          * @name pc.SpriteComponent#pause
          * @description Pauses the current animation clip.
@@ -505,7 +504,6 @@ pc.extend(pc, function () {
         },
 
         /**
-         * @private
          * @function
          * @name pc.SpriteComponent#resume
          * @description Resumes the current paused animation clip.
@@ -519,7 +517,6 @@ pc.extend(pc, function () {
         },
 
         /**
-         * @private
          * @function
          * @name pc.SpriteComponent#stop
          * @description Stops the current animation clip and resets it to the first frame.
@@ -654,10 +651,8 @@ pc.extend(pc, function () {
                 return;
             }
 
-            /*
-             * remove existing clips not in new value
-             * and update clips in both objects
-             */
+            // remove existing clips not in new value
+            // and update clips in both objects
             for (name in this._clips) {
                 var found = false;
                 for (key in value) {
@@ -783,11 +778,11 @@ pc.extend(pc, function () {
             this._batchGroupId = value;
 
             if (prev >= 0) {
-                this.system.app.batcher._markGroupDirty(prev);
+                this.system.app.batcher.markGroupDirty(prev);
             }
 
             if (this._batchGroupId >= 0) {
-                this.system.app.batcher._markGroupDirty(this._batchGroupId);
+                this.system.app.batcher.markGroupDirty(this._batchGroupId);
             } else {
                 // re-add model to scene in case it was removed by batching
                 if (prev >= 0) {
@@ -852,7 +847,6 @@ pc.extend(pc, function () {
 // Events Documentation
 
 /**
- * @private
  * @event
  * @name pc.SpriteComponent#play
  * @description Fired when an animation clip starts playing
@@ -860,7 +854,6 @@ pc.extend(pc, function () {
  */
 
 /**
- * @private
  * @event
  * @name pc.SpriteComponent#pause
  * @description Fired when an animation clip is paused.
@@ -868,7 +861,6 @@ pc.extend(pc, function () {
  */
 
 /**
- * @private
  * @event
  * @name pc.SpriteComponent#resume
  * @description Fired when an animation clip is resumed.
@@ -876,7 +868,6 @@ pc.extend(pc, function () {
  */
 
 /**
- * @private
  * @event
  * @name pc.SpriteComponent#stop
  * @description Fired when an animation clip is stopped.
@@ -884,7 +875,6 @@ pc.extend(pc, function () {
  */
 
 /**
- * @private
  * @event
  * @name pc.SpriteComponent#end
  * @description Fired when an animation clip stops playing because it reached its ending.
@@ -892,7 +882,6 @@ pc.extend(pc, function () {
  */
 
 /**
- * @private
  * @event
  * @name pc.SpriteComponent#loop
  * @description Fired when an animation clip reached the end of its current loop.

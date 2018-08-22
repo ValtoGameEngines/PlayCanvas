@@ -1,4 +1,4 @@
-pc.extend(pc, function () {
+Object.assign(pc, function () {
     /**
      * @component
      * @constructor
@@ -18,6 +18,8 @@ pc.extend(pc, function () {
      * @property {Object} slots A dictionary that contains the {@link pc.SoundSlot}s managed by this Component.
      */
     var SoundComponent = function (system, entity) {
+        pc.Component.call(this, system, entity);
+
         this.on('set_slots', this.onSetSlots, this);
         this.on('set_volume', this.onSetVolume, this);
         this.on('set_pitch', this.onSetPitch, this);
@@ -27,10 +29,10 @@ pc.extend(pc, function () {
         this.on("set_distanceModel", this.onSetDistanceModel, this);
         this.on("set_positional", this.onSetPositional, this);
     };
+    SoundComponent.prototype = Object.create(pc.Component.prototype);
+    SoundComponent.prototype.constructor = SoundComponent;
 
-    SoundComponent = pc.inherits(SoundComponent, pc.Component);
-
-    pc.extend(SoundComponent.prototype, {
+    Object.assign(SoundComponent.prototype, {
         onSetSlots: function (name, oldValue, newValue) {
             var key;
 
@@ -169,7 +171,7 @@ pc.extend(pc, function () {
         },
 
         onEnable: function () {
-            SoundComponent._super.onEnable.call(this);
+            pc.Component.prototype.onEnable.call(this);
 
             // do not run if running in Editor
             if (this.system._inTools) {
@@ -181,11 +183,9 @@ pc.extend(pc, function () {
 
             for (var key in slots) {
                 var slot = slots[key];
-                /*
-                 * play if autoPlay is true or
-                 * if the slot was paused when the component
-                 * got disabled
-                 */
+                // play if autoPlay is true or
+                // if the slot was paused when the component
+                // got disabled
                 if (slot.autoPlay && slot.isStopped) {
                     slot.play();
                 } else if (playingBeforeDisable[key]) {
@@ -198,7 +198,7 @@ pc.extend(pc, function () {
         },
 
         onDisable: function () {
-            SoundComponent._super.onDisable.call(this);
+            pc.Component.prototype.onDisable.call(this);
 
             var slots = this.data.slots;
             var playingBeforeDisable = {};
@@ -207,10 +207,8 @@ pc.extend(pc, function () {
                 if (!slots[key].overlap) {
                     if (slots[key].isPlaying) {
                         slots[key].pause();
-                        /*
-                         * remember sounds playing when we disable
-                         * so we can resume them on enable
-                         */
+                        // remember sounds playing when we disable
+                        // so we can resume them on enable
                         playingBeforeDisable[key] = true;
                     }
                 }

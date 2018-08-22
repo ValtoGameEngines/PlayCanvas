@@ -1,4 +1,4 @@
-pc.extend(pc, function () {
+Object.assign(pc, function () {
     'use strict';
 
     /**
@@ -13,7 +13,7 @@ pc.extend(pc, function () {
         this._cache = {};
     };
 
-    ResourceLoader.prototype = {
+    Object.assign(ResourceLoader.prototype, {
         /**
          * @function
          * @name pc.ResourceLoader#addHandler
@@ -47,6 +47,7 @@ pc.extend(pc, function () {
          * @param {String} url The URL of the resource to load.
          * @param {String} type The type of resource expected.
          * @param {Function} callback The callback used when the resource is loaded or an error occurs.
+         * @param {pc.Asset} [asset] Optional asset that is passed into handler
          * Passed (err, resource) where err is null if there are no errors.
          * @example
          * app.loader.load("../path/to/texture.png", "texture", function (err, texture) {
@@ -73,10 +74,8 @@ pc.extend(pc, function () {
                 // new request
                 this._requests[key] = [callback];
                 handler.load(url, function (err, data, extra) {
-                    /*
-                     * make sure key exists because loader
-                     * might have been destroyed by now
-                     */
+                    // make sure key exists because loader
+                    // might have been destroyed by now
                     if (!this._requests[key])
                         return;
 
@@ -162,7 +161,7 @@ pc.extend(pc, function () {
             this._requests = {};
             this._cache = {};
         }
-    };
+    });
 
     return {
         ResourceLoader: ResourceLoader

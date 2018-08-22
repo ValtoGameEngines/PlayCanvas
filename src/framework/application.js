@@ -1,4 +1,4 @@
-pc.extend(pc, function () {
+Object.assign(pc, function () {
     /**
      * @name pc.Application
      * @class Default application which performs general setup code and initiates the main game loop.
@@ -147,8 +147,14 @@ pc.extend(pc, function () {
         this.timeScale = 1;
         this.maxDeltaTime = 0.1; // Maximum delta is 0.1s or 10 fps.
 
+        this.frame = 0; // the total number of frames the application has updated since start() was called
+
         this.autoRender = true;
         this.renderNextFrame = false;
+
+        // enable if you want entity type script attributes
+        // to not be re-mapped when an entity is cloned
+        this.useLegacyScriptAttributeCloning = false;
 
         this._librariesLoaded = false;
         this._fillMode = pc.FILLMODE_KEEP_ASPECT;
@@ -173,6 +179,8 @@ pc.extend(pc, function () {
         if (options.assetPrefix) this.assets.prefix = options.assetPrefix;
         this.scriptsOrder = options.scriptsOrder || [];
         this.scripts = new pc.ScriptRegistry(this);
+
+        this._sceneRegistry = new pc.SceneRegistry(this);
 
         var self = this;
         this.defaultLayerWorld = new pc.Layer({
@@ -470,6 +478,8 @@ pc.extend(pc, function () {
         new pc.ScreenComponentSystem(this);
         new pc.ElementComponentSystem(this);
         new pc.ButtonComponentSystem(this);
+        new pc.ScrollViewComponentSystem(this);
+        new pc.ScrollbarComponentSystem(this);
         new pc.SpriteComponentSystem(this);
         new pc.LayoutGroupComponentSystem(this);
         new pc.LayoutChildComponentSystem(this);
@@ -477,10 +487,8 @@ pc.extend(pc, function () {
 
         this._visibilityChangeHandler = this.onVisibilityChange.bind(this);
 
-        /*
-         * Depending on browser add the correct visibiltychange event and store the name of the hidden attribute
-         * in this._hiddenAttr.
-         */
+        // Depending on browser add the correct visibiltychange event and store the name of the hidden attribute
+        // in this._hiddenAttr.
         if (document.hidden !== undefined) {
             this._hiddenAttr = 'hidden';
             document.addEventListener('visibilitychange', this._visibilityChangeHandler, false);
@@ -496,9 +504,10 @@ pc.extend(pc, function () {
         }
 
         // bind tick function to current scope
-        this.tick = makeTick(this);
-    };
 
+        /* eslint-disable-next-line no-use-before-define */
+        this.tick = makeTick(this); // Circular linting issue as makeTick and Application reference each other
+    };
 
     Application._currentApplication = null;
     Application._applications = {};
@@ -521,7 +530,7 @@ pc.extend(pc, function () {
         };
     };
 
-    Application.prototype = {
+    Object.assign(Application.prototype, {
         /**
          * @function
          * @name pc.Application#configure
@@ -538,10 +547,12 @@ pc.extend(pc, function () {
                 }
 
                 var props = response.application_properties;
+                var scenes = response.scenes;
                 var assets = response.assets;
 
                 self._parseApplicationProperties(props, function (err) {
                     self._onVrChange(props.vr);
+                    self._parseScenes(scenes);
                     self._parseAssets(assets);
                     if (!err) {
                         callback(null);
@@ -632,6 +643,22 @@ pc.extend(pc, function () {
 
         /**
          * @function
+         * @name pc.Application#getSceneUrl
+         * @description Look up the URL of the scene hierarchy file via the name given to the scene in the editor. Use this to in {@link pc.Application#loadSceneHierarchy}.
+         * @param {String} name The name of the scene file given in the Editor
+         * @returns {String} The URL of the scene file
+         */
+        getSceneUrl: function (name) {
+            var entry = this._sceneRegistry.find(name);
+            if (entry) {
+                return entry.url;
+            }
+            return null;
+
+        },
+
+        /**
+         * @function
          * @name pc.Application#loadSceneHierarchy
          * @description Load a scene file, create and initialize the Entity hierarchy
          * and add the hierarchy to the application root Entity.
@@ -649,48 +676,7 @@ pc.extend(pc, function () {
          * });
          */
         loadSceneHierarchy: function (url, callback) {
-            var self = this;
-
-            /*
-             * Because we need to load scripts before we instance the hierarchy (i.e. before we create script components)
-             * Split loading into load and open
-             */
-            var handler = this.loader.getHandler("hierarchy");
-
-            // include asset prefix if present
-            if (this.assets && this.assets.prefix && !pc.ABSOLUTE_URL.test(url)) {
-                url = pc.path.join(this.assets.prefix, url);
-            }
-
-            handler.load(url, function (err, data) {
-                if (err) {
-                    if (callback) callback(err);
-                    return;
-                }
-
-                // called after scripts are preloaded
-                var _loaded = function () {
-
-                    self.systems.script.preloading = true;
-                    var entity = handler.open(url, data);
-                    self.systems.script.preloading = false;
-
-                    // clear from cache because this data is modified by entity operations (e.g. destroy)
-                    self.loader.clearCache(url, "hierarchy");
-
-                    // add to hierarchy
-                    self.root.addChild(entity);
-
-                    // initialize components
-                    pc.ComponentSystem.initialize(entity);
-                    pc.ComponentSystem.postInitialize(entity);
-
-                    if (callback) callback(err, entity);
-                };
-
-                // load priority and referenced scripts before opening scene
-                self._preloadScripts(data, _loaded);
-            });
+            this._sceneRegistry.loadSceneHierarchy(url, callback);
         },
 
         /**
@@ -710,75 +696,11 @@ pc.extend(pc, function () {
          * });
          */
         loadSceneSettings: function (url, callback) {
-            // include asset prefix if present
-            if (this.assets && this.assets.prefix && !pc.ABSOLUTE_URL.test(url)) {
-                url = pc.path.join(this.assets.prefix, url);
-            }
-
-            this.loader.load(url, "scenesettings", function (err, settings) {
-                if (!err) {
-                    this.applySceneSettings(settings);
-                    if (callback) {
-                        callback(null);
-                    }
-
-                } else {
-                    if (callback) {
-                        callback(err);
-                    }
-                }
-            }.bind(this));
+            this._sceneRegistry.loadSceneSettings(url, callback);
         },
 
         loadScene: function (url, callback) {
-            var self = this;
-
-            var handler = this.loader.getHandler("scene");
-
-            // include asset prefix if present
-            if (this.assets && this.assets.prefix && !pc.ABSOLUTE_URL.test(url)) {
-                url = pc.path.join(this.assets.prefix, url);
-            }
-
-            handler.load(url, function (err, data) {
-                if (!err) {
-                    var _loaded = function () {
-                        // parse and create scene
-                        self.systems.script.preloading = true;
-                        var scene = handler.open(url, data);
-                        self.systems.script.preloading = false;
-
-                        /*
-                         * clear scene from cache because we'll destroy it when we load another one
-                         * so data will be invalid
-                         */
-                        self.loader.clearCache(url, "scene");
-
-                        self.loader.patch({
-                            resource: scene,
-                            type: "scene"
-                        }, self.assets);
-
-                        self.root.addChild(scene.root);
-
-                        // Initialise pack settings
-                        if (self.systems.rigidbody && typeof Ammo !== 'undefined') {
-                            self.systems.rigidbody.setGravity(scene._gravity.x, scene._gravity.y, scene._gravity.z);
-                        }
-
-                        if (callback) {
-                            callback(null, scene);
-                        }
-                    };
-
-                    // preload scripts before opening scene
-                    this._preloadScripts(data, _loaded);
-                } else {
-                    if (callback) {
-                        callback(err);
-                    }
-                }
-            }.bind(this));
+            this._sceneRegistry.loadScene(url, callback);
         },
 
         _preloadScripts: function (sceneData, callback) {
@@ -848,10 +770,8 @@ pc.extend(pc, function () {
             this.setCanvasResolution(props.resolutionMode, this._width, this._height);
             this.setCanvasFillMode(props.fillMode, this._width, this._height);
 
-            /*
-             * if VR is enabled in the project and there is no native VR support
-             * load the polyfill
-             */
+            // if VR is enabled in the project and there is no native VR support
+            // load the polyfill
             if (props.vr && props.vrPolyfillUrl) {
                 if (!pc.VrManager.isSupported || pc.platform.android) {
                     props.libraries.push(props.vrPolyfillUrl);
@@ -866,10 +786,8 @@ pc.extend(pc, function () {
                 for (var key in props.layers) {
                     var data = props.layers[key];
                     data.id = parseInt(key, 10);
-                    /*
-                     * depth layer should only be enabled when needed
-                     * by incrementing its ref counter
-                     */
+                    // depth layer should only be enabled when needed
+                    // by incrementing its ref counter
                     data.enabled = data.id !== pc.LAYERID_DEPTH;
                     layers[key] = new pc.Layer(data);
                 }
@@ -931,6 +849,15 @@ pc.extend(pc, function () {
                 }
             } else {
                 callback(null);
+            }
+        },
+
+        // insert scene name/urls into the registry
+        _parseScenes: function (scenes) {
+            if (!scenes) return;
+
+            for (var i = 0; i < scenes.length; i++) {
+                this._sceneRegistry.add(scenes[i].name, scenes[i].url);
             }
         },
 
@@ -1018,6 +945,8 @@ pc.extend(pc, function () {
          * @description Start the Application updating
          */
         start: function () {
+            this.frame = 0;
+
             this.fire("start", {
                 timestamp: pc.now(),
                 target: this
@@ -1043,6 +972,8 @@ pc.extend(pc, function () {
          * @param {Number} dt The time delta since the last frame.
          */
         update: function (dt) {
+            this.frame++;
+
             this.graphicsDevice.updateClientRect();
 
             if (this.vr) this.vr.poll();
@@ -1607,7 +1538,7 @@ pc.extend(pc, function () {
 
             pc.destroyPostEffectQuad();
         }
-    };
+    });
 
     // static data
     var _frameEndData = {};

@@ -1,4 +1,4 @@
-pc.extend(pc, function () {
+Object.assign(pc, function () {
     /**
      * @constructor
      * @name pc.AssetRegistry
@@ -19,7 +19,7 @@ pc.extend(pc, function () {
 
         this.prefix = null;
 
-        pc.extend(this, pc.events);
+        Object.assign(this, pc.events);
     };
 
     /**
@@ -150,7 +150,7 @@ pc.extend(pc, function () {
      * app.assets.load(asset);
      */
 
-    AssetRegistry.prototype = {
+    Object.assign(AssetRegistry.prototype, {
         /**
          * @function
          * @name pc.AssetRegistry#list
@@ -214,28 +214,55 @@ pc.extend(pc, function () {
          * @name pc.AssetRegistry#remove
          * @description Remove an asset from the registry
          * @param {pc.Asset} asset The asset to remove
+         * @returns {Boolean} True if the asset was successfully removed and false otherwise
          * @example
          * var asset = app.assets.get(100);
          * app.assets.remove(asset);
          */
         remove: function (asset) {
-            delete this._cache[asset.id];
-            delete this._names[asset.name];
+            var idx = this._cache[asset.id];
 
-            var url = asset.file ? asset.file.url : null;
-            if (url)
-                delete this._urls[url];
+            if (idx !== undefined) {
+                // remove from list
+                this._assets.splice(idx, 1);
 
-            // tags cache
-            this._tags.removeItem(asset);
-            asset.tags.off('add', this._onTagAdd, this);
-            asset.tags.off('remove', this._onTagRemove, this);
+                // remove id -> index cache
+                delete this._cache[asset.id];
 
-            asset.fire("remove", asset);
-            this.fire("remove", asset);
-            this.fire("remove:" + asset.id, asset);
-            if (url)
-                this.fire("remove:url:" + url, asset);
+                // name cache needs to be completely rebuilt
+                this._names = {};
+
+                // update id cache and rebuild name cache
+                for (var i = 0, l = this._assets.length; i < l; i++) {
+                    var a = this._assets[i];
+
+                    this._cache[a.id] = i;
+                    if (!this._names[a.name]) {
+                        this._names[a.name] = [];
+                    }
+                    this._names[a.name].push(i);
+                }
+
+                var url = asset.file ? asset.file.url : null;
+                if (url)
+                    delete this._urls[url];
+
+                // tags cache
+                this._tags.removeItem(asset);
+                asset.tags.off('add', this._onTagAdd, this);
+                asset.tags.off('remove', this._onTagRemove, this);
+
+                asset.fire("remove", asset);
+                this.fire("remove", asset);
+                this.fire("remove:" + asset.id, asset);
+                if (url)
+                    this.fire("remove:url:" + url, asset);
+
+                return true;
+            }
+
+            // asset not in registry
+            return false;
         },
 
         /**
@@ -292,11 +319,9 @@ pc.extend(pc, function () {
 
             var self = this;
 
-            /*
-             * do nothing if asset is already loaded
-             * note: lots of code calls assets.load() assuming this check is present
-             * don't remove it without updating calls to assets.load() with checks for the asset.loaded state
-             */
+            // do nothing if asset is already loaded
+            // note: lots of code calls assets.load() assuming this check is present
+            // don't remove it without updating calls to assets.load() with checks for the asset.loaded state
             if (asset.loaded) {
                 if (asset.type === 'cubemap')
                     self._loader.patch(asset, this);
@@ -437,8 +462,8 @@ pc.extend(pc, function () {
                 return;
             }
 
-            asset.once("load", function (asset) {
-                callback(null, asset);
+            asset.once("load", function (loadedAsset) {
+                callback(null, loadedAsset);
             });
             asset.once("error", function (err) {
                 callback(err);
@@ -455,15 +480,14 @@ pc.extend(pc, function () {
             var basename = pc.path.getBasename(url);
             var ext = pc.path.getExtension(url);
 
-
-            var _loadAsset = function (asset) {
-                asset.once("load", function (asset) {
-                    callback(null, asset);
+            var _loadAsset = function (assetToLoad) {
+                asset.once("load", function (loadedAsset) {
+                    callback(null, loadedAsset);
                 });
                 asset.once("error", function (err) {
                     callback(err);
                 });
-                self.load(asset);
+                self.load(assetToLoad);
             };
 
             if (ext === '.json') {
@@ -476,7 +500,7 @@ pc.extend(pc, function () {
                         return;
                     }
 
-                    self._loadMaterials(dir, data, function (err, materials) {
+                    self._loadMaterials(dir, data, function (e, materials) {
                         asset.data = data;
                         _loadAsset(asset);
                     });
@@ -495,9 +519,9 @@ pc.extend(pc, function () {
             var count = mapping.mapping.length;
             var materials = [];
 
-            var done = function (err, materials) {
-                self._loadTextures(materials, function (err, textures) {
-                    callback(null, materials);
+            var done = function (err, loadedMaterials) {
+                self._loadTextures(loadedMaterials, function (e, textures) {
+                    callback(null, loadedMaterials);
                 });
             };
 
@@ -515,41 +539,46 @@ pc.extend(pc, function () {
             for (i = 0; i < mapping.mapping.length; i++) {
                 var path = mapping.mapping[i].path;
                 if (path) {
-                    self.loadFromUrl(pc.path.join(dir, path), "material", onLoadAsset);
+                    path = pc.path.join(dir, path);
+                    self.loadFromUrl(path, "material", onLoadAsset);
                 } else {
                     count--;
                 }
             }
-
-
         },
 
         // private method used for engine-only loading of model data
-        _loadTextures: function (materials, callback) {
+        _loadTextures: function (materialAssets, callback) {
             var self = this;
-            var i, j;
+            var i;
             var used = {}; // prevent duplicate urls
             var urls = [];
             var textures = [];
             var count = 0;
-            for (i = 0; i < materials.length; i++) {
-                if (materials[i].data.parameters) {
-                    // old material format
-                    var params = materials[i].data.parameters;
-                    for (j = 0; j < params.length; j++) {
-                        if (params[j].type === "texture") {
-                            var url = materials[i].getFileUrl();
-                            var dir = pc.path.getDirectory(url);
-                            url = pc.path.join(dir, params[j].data);
-                            if (!used[url]) {
-                                used[url] = true;
-                                urls.push(url);
-                                count++;
-                            }
+            for (i = 0; i < materialAssets.length; i++) {
+                var materialData = materialAssets[i].data;
+
+                if (materialData.mappingFormat !== 'path') {
+                    console.warn('Skipping: ' + materialAssets[i].name + ', material files must be mappingFormat: "path" to be loaded from URL');
+                    continue;
+                }
+
+                var url = materialAssets[i].getFileUrl();
+                var dir = pc.path.getDirectory(url);
+                var textureUrl;
+
+                for (var pi = 0; pi < pc.StandardMaterial.TEXTURE_PARAMETERS.length; pi++) {
+                    var paramName = pc.StandardMaterial.TEXTURE_PARAMETERS[pi];
+
+                    if (materialData[paramName]) {
+                        var texturePath = materialData[paramName];
+                        textureUrl = pc.path.join(dir, texturePath);
+                        if (!used[textureUrl]) {
+                            used[textureUrl] = true;
+                            urls.push(textureUrl);
+                            count++;
                         }
                     }
-                } else {
-                    console.warn("Update material asset loader to support new material format");
                 }
             }
 
@@ -678,8 +707,7 @@ pc.extend(pc, function () {
             console.warn("DEPRECATED: getAssetById() use get() instead");
             return this.get(id);
         }
-
-    };
+    });
 
     return {
         AssetRegistry: AssetRegistry

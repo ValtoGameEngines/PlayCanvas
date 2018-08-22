@@ -1,4 +1,4 @@
-pc.extend(pc, function () {
+Object.assign(pc, function () {
 
     // auto incrementing number for asset ids
     var assetIdCounter = 0;
@@ -113,7 +113,7 @@ pc.extend(pc, function () {
      * @param {*} oldValue The old property value
      */
 
-    Asset.prototype = {
+    Object.assign(Asset.prototype, {
         /**
          * @name pc.Asset#getFileUrl
          * @function
@@ -167,6 +167,7 @@ pc.extend(pc, function () {
          * @name pc.Asset#ready
          * @description Take a callback which is called as soon as the asset is loaded. If the asset is already loaded the callback is called straight away
          * @param {Function} callback The function called when the asset is ready. Passed the (asset) arguments
+         * @param {Object} scope Scope object to use when calling the callback
          * @example
          * var asset = app.assets.find("My Asset");
          * asset.ready(function (asset) {
@@ -226,8 +227,7 @@ pc.extend(pc, function () {
                 this.registry._loader.clearCache(this.getFileUrl(), this.type);
             }
         }
-    };
-
+    });
 
     Object.defineProperty(Asset.prototype, 'id', {
         get: function () {
@@ -247,11 +247,9 @@ pc.extend(pc, function () {
         },
 
         set: function (value) {
-            /*
-             * fire change event when the file changes
-             * so that we reload it if necessary
-             * set/unset file property of file hash been changed
-             */
+            // fire change event when the file changes
+            // so that we reload it if necessary
+            // set/unset file property of file hash been changed
             var key;
             var valueAsBool = !!value;
             var fileAsBool = !!this._file;
@@ -306,10 +304,8 @@ pc.extend(pc, function () {
         },
 
         set: function (value) {
-            /*
-             * fire change event when data changes
-             * because the asset might need reloading if that happens
-             */
+            // fire change event when data changes
+            // because the asset might need reloading if that happens
             var old = this._data;
             this._data = value;
             if (value !== old) {

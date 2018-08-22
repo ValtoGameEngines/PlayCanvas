@@ -1,4 +1,4 @@
-pc.extend(pc, function () {
+Object.assign(pc, function () {
 
     var ammoVec1, ammoQuat;
 
@@ -25,7 +25,7 @@ pc.extend(pc, function () {
         this.initialize(data);
     };
 
-    Trigger.prototype =  {
+    Object.assign(Trigger.prototype,  {
         initialize: function (data) {
             var entity = this.entity;
             var shape = data.shape;
@@ -98,10 +98,8 @@ pc.extend(pc, function () {
 
             this.app.systems.rigidbody.addBody(body, pc.BODYGROUP_TRIGGER, pc.BODYMASK_NOT_STATIC ^ pc.BODYGROUP_TRIGGER);
 
-            /*
-             * set the body's activation state to active so that it is
-             * simulated properly again
-             */
+            // set the body's activation state to active so that it is
+            // simulated properly again
             body.forceActivationState(pc.BODYSTATE_ACTIVE_TAG);
 
             body.activate();
@@ -115,16 +113,13 @@ pc.extend(pc, function () {
 
             this.app.systems.rigidbody.removeBody(body);
 
-            /*
-             * set the body's activation state to disable simulation so
-             * that it properly deactivates after we remove it from the physics world
-             */
+            // set the body's activation state to disable simulation so
+            // that it properly deactivates after we remove it from the physics world
             body.forceActivationState(pc.BODYSTATE_DISABLE_SIMULATION);
         }
-    };
+    });
 
     return {
         Trigger: Trigger
     };
-
 }());

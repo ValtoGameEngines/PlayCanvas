@@ -233,6 +233,7 @@
         SHADERDEF_LM: 64,
         SHADERDEF_DIRLM: 128,
         SHADERDEF_SCREENSPACE: 256,
+        SHADERDEF_TANGENTS: 512,
 
         LINEBATCH_WORLD: 0,
         LINEBATCH_OVERLAY: 1,
@@ -272,22 +273,20 @@
 
         // next are undocumented
         SHADER_SHADOW: 3, // PCF3
-        /*
-         * 4: VSM8,
-         * 5: VSM16,
-         * 6: VSM32,
-         * 7: PCF5,
-         * 8: PCF3 POINT
-         * 9: VSM8 POINT,
-         * 10: VSM16 POINT,
-         * 11: VSM32 POINT,
-         * 12: PCF5 POINT
-         * 13: PCF3 SPOT
-         * 14: VSM8 SPOT,
-         * 15: VSM16 SPOT,
-         * 16: VSM32 SPOT,
-         * 17: PCF5 SPOT
-         */
+        // 4: VSM8,
+        // 5: VSM16,
+        // 6: VSM32,
+        // 7: PCF5,
+        // 8: PCF3 POINT
+        // 9: VSM8 POINT,
+        // 10: VSM16 POINT,
+        // 11: VSM32 POINT,
+        // 12: PCF5 POINT
+        // 13: PCF3 SPOT
+        // 14: VSM8 SPOT,
+        // 15: VSM16 SPOT,
+        // 16: VSM32 SPOT,
+        // 17: PCF5 SPOT
         SHADER_PICK: 18,
 
         BAKE_COLOR: 0,
@@ -332,23 +331,44 @@
          */
         SORTMODE_FRONT2BACK: 4,
 
+        /**
+         * @private
+         * @enum pc.SORTMODE
+         * @name  pc.SORTMODE_CUSTOM
+         * @description Provide custom functions for sorting drawcalls and calculating distance
+         */
+        SORTMODE_CUSTOM: 5,
+
         COMPUPDATED_INSTANCES: 1,
         COMPUPDATED_LIGHTS: 2,
         COMPUPDATED_CAMERAS: 4,
         COMPUPDATED_BLEND: 8,
 
         ASPECT_AUTO: 0,
-        ASPECT_MANUAL: 1
+        ASPECT_MANUAL: 1,
+
+        /**
+         * @enum pc.ORIENTATION
+         * @name pc.ORIENTATION_HORIZONTAL
+         * @description Horizontal orientation.
+         */
+        ORIENTATION_HORIZONTAL: 0,
+        /**
+         * @enum pc.ORIENTATION
+         * @name pc.ORIENTATION_VERTICAL
+         * @description Vertical orientation.
+         */
+        ORIENTATION_VERTICAL: 1
     };
 
-    pc.extend(pc, enums);
+    Object.assign(pc, enums);
 
     // For backwards compatibility
     pc.scene = {};
-    pc.extend(pc.scene, enums);
+    Object.assign(pc.scene, enums);
 }());
 
-pc.extend(pc, function () {
+Object.assign(pc, function () {
     /**
      * @constructor
      * @name pc.Scene
@@ -604,10 +624,8 @@ pc.extend(pc, function () {
         }
     });
 
-    /*
-     * some backwards compatibility
-     * drawCalls will now return list of all active composition mesh instances
-     */
+    // some backwards compatibility
+    // drawCalls will now return list of all active composition mesh instances
     Object.defineProperty(Scene.prototype, 'drawCalls', {
         get: function () {
             var drawCalls = this.layers._meshInstances;
@@ -721,10 +739,8 @@ pc.extend(pc, function () {
         if (!cubemaps)
             cubemaps = [null, null, null, null, null, null, null];
 
-        /*
-         * check if any values actually changed
-         * to prevent unnecessary recompilations
-         */
+        // check if any values actually changed
+        // to prevent unnecessary recompilations
 
         var different = false;
 

@@ -1,5 +1,6 @@
-pc.extend(pc, function () {
+Object.assign(pc, function () {
     /**
+     * @private
      * @component
      * @name pc.ZoneComponent
      * @extends pc.Component
@@ -12,13 +13,17 @@ pc.extend(pc, function () {
      */
 
     var ZoneComponent = function ZoneComponent(system, entity) {
+        pc.Component.call(this, system, entity);
+
         this._oldState = true;
         this._size = new pc.Vec3();
         this.on('set_enabled', this._onSetEnabled, this);
     };
-    ZoneComponent = pc.inherits(ZoneComponent, pc.Component);
+    ZoneComponent.prototype = Object.create(pc.Component.prototype);
+    ZoneComponent.prototype.constructor = ZoneComponent;
 
     /**
+     * @private
      * @event
      * @name pc.ZoneComponent#enable
      * @description Fired when Component becomes enabled
@@ -30,6 +35,7 @@ pc.extend(pc, function () {
      */
 
     /**
+     * @private
      * @event
      * @name pc.ZoneComponent#disable
      * @description Fired when Component becomes disabled
@@ -41,6 +47,7 @@ pc.extend(pc, function () {
      */
 
     /**
+     * @private
      * @event
      * @name pc.ZoneComponent#state
      * @description Fired when Component changes state to enabled or disabled
@@ -53,6 +60,7 @@ pc.extend(pc, function () {
      */
 
     /**
+     * @private
      * @event
      * @name pc.ZoneComponent#remove
      * @description Fired when a zone is removed from an entity
@@ -62,14 +70,14 @@ pc.extend(pc, function () {
      * });
      */
 
-    pc.extend(ZoneComponent.prototype, {
+    Object.assign(ZoneComponent.prototype, {
         onEnable: function () {
-            ZoneComponent._super.onEnable.call(this);
+            pc.Component.prototype.onEnable.call(this);
             this._checkState();
         },
 
         onDisable: function () {
-            ZoneComponent._super.onDisable.call(this);
+            pc.Component.prototype.onDisable.call(this);
             this._checkState();
         },
 

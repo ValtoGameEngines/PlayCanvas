@@ -1,4 +1,4 @@
-pc.extend(pc, function () {
+Object.assign(pc, function () {
     var _schema = [
         'enabled',
         'autoPlay',
@@ -30,6 +30,7 @@ pc.extend(pc, function () {
         'colorMapAsset',
         'normalMapAsset',
         'mesh',
+        'meshAsset',
         'localVelocityGraph',
         'localVelocityGraph2',
         'velocityGraph',
@@ -61,6 +62,8 @@ pc.extend(pc, function () {
      * @extends pc.ComponentSystem
      */
     var ParticleSystemComponentSystem = function ParticleSystemComponentSystem(app) {
+        pc.ComponentSystem.call(this, app);
+
         this.id = 'particlesystem';
         this.description = "Updates and renders particle system in the scene.";
         app.systems.add(this.id, this);
@@ -90,11 +93,12 @@ pc.extend(pc, function () {
         this.on('beforeremove', this.onRemove, this);
         pc.ComponentSystem.on('update', this.onUpdate, this);
     };
-    ParticleSystemComponentSystem = pc.inherits(ParticleSystemComponentSystem, pc.ComponentSystem);
+    ParticleSystemComponentSystem.prototype = Object.create(pc.ComponentSystem.prototype);
+    ParticleSystemComponentSystem.prototype.constructor = ParticleSystemComponentSystem;
 
     pc.Component._buildAccessors(pc.ParticleSystemComponent.prototype, _schema);
 
-    pc.extend(ParticleSystemComponentSystem.prototype, {
+    Object.assign(ParticleSystemComponentSystem.prototype, {
 
         initializeComponentData: function (component, _data, properties) {
             var data = {};
@@ -102,6 +106,14 @@ pc.extend(pc, function () {
             properties = [];
             var types = this.propertyTypes;
             var type;
+
+            // we store the mesh asset id as "mesh" (it should be "meshAsset")
+            // this re-maps "mesh" into "meshAsset" if it is an asset or an asset id
+            if (_data.mesh instanceof pc.Asset || typeof _data.mesh === 'number') {
+                // migrate into meshAsset property
+                _data.meshAsset = _data.mesh;
+                delete _data.mesh;
+            }
 
             for (var prop in _data) {
                 if (_data.hasOwnProperty(prop)) {
@@ -134,7 +146,7 @@ pc.extend(pc, function () {
                 }
             }
 
-            ParticleSystemComponentSystem._super.initializeComponentData.call(this, component, data, properties);
+            pc.ComponentSystem.prototype.initializeComponentData.call(this, component, data, properties);
         },
 
         cloneComponent: function (entity, clone) {
@@ -179,11 +191,9 @@ pc.extend(pc, function () {
                         var emitter = data.model.emitter;
                         if (!emitter.meshInstance.visible) continue;
 
-                        /*
-                         * Bake ambient and directional lighting into one ambient cube
-                         * TODO: only do if lighting changed
-                         * TODO: don't do for every emitter
-                         */
+                        // Bake ambient and directional lighting into one ambient cube
+                        // TODO: only do if lighting changed
+                        // TODO: don't do for every emitter
                         if (emitter.lighting) {
                             var layer, lightCube;
                             var layers = data.layers;
@@ -238,16 +248,7 @@ pc.extend(pc, function () {
         },
 
         onRemove: function (entity, component) {
-            var data = component.data;
-            if (data.model) {
-                entity.removeChild(data.model.getGraph());
-                data.model = null;
-            }
-
-            if (component.emitter) {
-                component.emitter.destroy();
-                component.emitter = null;
-            }
+            component.onDestroy();
         }
     });
 

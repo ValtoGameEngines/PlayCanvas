@@ -1,4 +1,4 @@
-pc.extend(pc, function () {
+Object.assign(pc, function () {
     'use strict';
 
     // default maxDistance, same as Web Audio API
@@ -8,15 +8,18 @@ pc.extend(pc, function () {
 
     if (pc.AudioManager.hasAudioContext()) {
         Channel3d = function (manager, sound, options) {
+            pc.Channel.call(this, manager, sound, options);
+
             this.position = new pc.Vec3();
             this.velocity = new pc.Vec3();
 
             var context = manager.context;
             this.panner = context.createPanner();
         };
-        Channel3d = pc.inherits(Channel3d, pc.Channel);
+        Channel3d.prototype = Object.create(pc.Channel.prototype);
+        Channel3d.prototype.constructor = Channel3d;
 
-        Channel3d.prototype = pc.extend(Channel3d.prototype, {
+        Object.assign(Channel3d.prototype, {
             getPosition: function () {
                 return this.position;
             },
@@ -95,10 +98,8 @@ pc.extend(pc, function () {
         var offset = new pc.Vec3();
 
 
-        /*
-         * Fall off function which should be the same as the one in the Web Audio API
-         * Taken from https://developer.mozilla.org/en-US/docs/Web/API/PannerNode/distanceModel
-         */
+        // Fall off function which should be the same as the one in the Web Audio API
+        // Taken from https://developer.mozilla.org/en-US/docs/Web/API/PannerNode/distanceModel
         var fallOff = function (posOne, posTwo, refDistance, maxDistance, rolloffFactor, distanceModel) {
             offset = offset.sub2(posOne, posTwo);
             var distance = offset.length();
@@ -121,6 +122,8 @@ pc.extend(pc, function () {
         };
 
         Channel3d = function (manager, sound) {
+            pc.Channel.call(this, manager, sound);
+
             this.position = new pc.Vec3();
             this.velocity = new pc.Vec3();
 
@@ -128,11 +131,11 @@ pc.extend(pc, function () {
             this.minDistance = 1;
             this.rollOffFactor = 1;
             this.distanceModel = pc.DISTANCE_INVERSE;
-
         };
-        Channel3d = pc.inherits(Channel3d, pc.Channel);
+        Channel3d.prototype = Object.create(pc.Channel.prototype);
+        Channel3d.prototype.constructor = Channel3d;
 
-        Channel3d.prototype = pc.extend(Channel3d.prototype, {
+        Object.assign(Channel3d.prototype, {
             getPosition: function () {
                 return this.position;
             },

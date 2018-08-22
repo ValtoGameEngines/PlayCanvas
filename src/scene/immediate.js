@@ -1,4 +1,4 @@
-pc.extend(pc.Application.prototype, function () {
+Object.assign(pc.Application.prototype, function () {
 
     var tempGraphNode = new pc.GraphNode();
     var identityGraphNode = new pc.GraphNode();
@@ -49,7 +49,7 @@ pc.extend(pc.Application.prototype, function () {
         this.layer = null;
     };
 
-    LineBatch.prototype = {
+    Object.assign(LineBatch.prototype, {
         init: function (device, vertexFormat, layer, linesToAdd) {
             // Allocate basic stuff once per batch
             if (!this.mesh) {
@@ -69,7 +69,10 @@ pc.extend(pc.Application.prototype, function () {
 
             // Increase buffer size, if it's not enough
             while ((this.linesUsed + linesToAdd) > this.numLinesAllocated) {
-                this.vb = null;
+                if (this.vb) {
+                    this.vb.destroy();
+                    this.vb = null;
+                }
                 this.numLinesAllocated *= 2;
             }
 
@@ -118,7 +121,7 @@ pc.extend(pc.Application.prototype, function () {
                 this.linesUsed = 0;
             }
         }
-    };
+    });
 
     function _initImmediate() {
         // Init global line drawing data once
@@ -328,10 +331,8 @@ pc.extend(pc.Application.prototype, function () {
         this._addLines(position, color, options);
     }
 
-    /*
-     * Draw lines forming a transformed unit-sized cube at this frame
-     * lineType is optional
-     */
+    // Draw lines forming a transformed unit-sized cube at this frame
+    // lineType is optional
     function renderWireCube(matrix, color, options) {
         // if (lineType===undefined) lineType = pc.LINEBATCH_WORLD;
 

@@ -1,4 +1,4 @@
-pc.extend(pc, function () {
+Object.assign(pc, function () {
     'use strict';
 
     // default maxDistance, same as Web Audio API
@@ -33,6 +33,8 @@ pc.extend(pc, function () {
          * @property {Number} rollOffFactor The factor used in the falloff equation.
          */
         SoundInstance3d = function (manager, sound, options) {
+            pc.SoundInstance.call(this, manager, sound, options);
+
             options = options || {};
 
             this._position = new pc.Vec3();
@@ -48,9 +50,10 @@ pc.extend(pc, function () {
             this.rollOffFactor = options.rollOffFactor !== undefined ? Number(options.rollOffFactor) : 1;
             this.distanceModel = options.distanceModel !== undefined ? options.distanceModel : pc.DISTANCE_LINEAR;
         };
-        SoundInstance3d = pc.inherits(SoundInstance3d, pc.SoundInstance);
+        SoundInstance3d.prototype = Object.create(pc.SoundInstance.prototype);
+        SoundInstance3d.prototype.constructor = SoundInstance3d;
 
-        SoundInstance3d.prototype = pc.extend(SoundInstance3d.prototype, {
+        Object.assign(SoundInstance3d.prototype, {
             _initializeNodes: function () {
                 this.gain = this._manager.context.createGain();
                 this.panner = this._manager.context.createPanner();
@@ -121,10 +124,8 @@ pc.extend(pc, function () {
         // temp vector storage
         var offset = new pc.Vec3();
 
-        /*
-         * Fall off function which should be the same as the one in the Web Audio API
-         * Taken from https://developer.mozilla.org/en-US/docs/Web/API/PannerNode/distanceModel
-         */
+        // Fall off function which should be the same as the one in the Web Audio API
+        // Taken from https://developer.mozilla.org/en-US/docs/Web/API/PannerNode/distanceModel
         var fallOff = function (posOne, posTwo, refDistance, maxDistance, rollOffFactor, distanceModel) {
             offset = offset.sub2(posOne, posTwo);
             var distance = offset.length();
@@ -147,6 +148,8 @@ pc.extend(pc, function () {
         };
 
         SoundInstance3d = function (manager, sound, options) {
+            pc.SoundInstance.call(this, manager, sound, options);
+
             options = options || {};
 
             this._position = new pc.Vec3();
@@ -161,9 +164,9 @@ pc.extend(pc, function () {
             this._refDistance = options.refDistance !== undefined ? Number(options.refDistance) : 1;
             this._rollOffFactor = options.rollOffFactor !== undefined ? Number(options.rollOffFactor) : 1;
             this._distanceModel = options.distanceModel !== undefined ? options.distanceModel : pc.DISTANCE_LINEAR;
-
         };
-        SoundInstance3d = pc.inherits(SoundInstance3d, pc.SoundInstance);
+        SoundInstance3d.prototype = Object.create(pc.SoundInstance.prototype);
+        SoundInstance3d.prototype.constructor = SoundInstance3d;
 
         Object.defineProperty(SoundInstance3d.prototype, 'position', {
             get: function () {
