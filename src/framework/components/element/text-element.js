@@ -37,10 +37,16 @@ Object.assign(pc, function () {
         this._meshInfo = [];
         this._material = null;
 
+        this._aabbDirty = true;
+        this._aabb = new pc.BoundingBox();
+
         this._noResize = false; // flag used to disable resizing events
 
         this._currentMaterialType = null; // save the material type (screenspace or not) to prevent overwriting
         this._maskedMaterialSrc = null; // saved material that was assigned before element was masked
+
+        this._rtlReorder = false;
+        this._unicodeConverter = false;
 
         // initialize based on screen
         this._onScreenChange(this._element.screen);
@@ -114,6 +120,16 @@ Object.assign(pc, function () {
             if (text === undefined) text = this._text;
 
             var symbols = pc.string.getSymbols(text);
+
+            if (this.rtlReorder) {
+                var rtlReorderFunc = this._system.app.systems.element.getRtlReorder();
+                if (rtlReorderFunc) {
+                    symbols = rtlReorderFunc(symbols);
+                } else {
+                    console.warn('Element created with rtlReorder option but no rtlReorder function registered');
+                }
+            }
+
             var textLength = symbols.length;
 
             // handle null string
@@ -126,8 +142,8 @@ Object.assign(pc, function () {
             var charactersPerTexture = {};
 
             for (i = 0; i < textLength; i++) {
-                var code = pc.string.getCodePoint(symbols[i]);
-                var info = this._font.data.chars[code];
+                var char = symbols[i];
+                var info = this._font.data.chars[char];
                 if (!info) continue;
 
                 var map = info.map;
@@ -232,7 +248,7 @@ Object.assign(pc, function () {
                 this._element.addModelToLayers(this._model);
             }
 
-            this._updateMeshes(text);
+            this._updateMeshes(symbols);
         },
 
         _removeMeshInstance: function (meshInstance) {
@@ -286,7 +302,7 @@ Object.assign(pc, function () {
             }
         },
 
-        _updateMeshes: function (text) {
+        _updateMeshes: function (symbols) {
             var json = this._font.data;
             var self = this;
 
@@ -295,7 +311,6 @@ Object.assign(pc, function () {
             this._lineWidths = [];
             this._lineContents = [];
 
-            var symbols = pc.string.getSymbols(text);
             var l = symbols.length;
             var _x = 0; // cursors
             var _xMinusTrailingWhitespace = 0;
@@ -322,12 +337,12 @@ Object.assign(pc, function () {
             var scale = 1;
             var MAGIC = 32;
 
-            var char, charCode, data, i, quad;
+            var char, charId, data, i, quad;
 
             // TODO: Optimize this as it loops through all the chars in the asset
             // every time the text changes...
-            for (charCode in json.chars) {
-                data = json.chars[charCode];
+            for (charId in json.chars) {
+                data = json.chars[charId];
                 scale = (data.height / MAGIC) * this._fontSize / data.height;
                 if (data.bounds) {
                     fontMinY = Math.min(fontMinY, data.bounds[1] * scale);
@@ -359,7 +374,6 @@ Object.assign(pc, function () {
 
             for (i = 0; i < l; i++) {
                 char = symbols[i];
-                charCode = pc.string.getCodePoint(symbols[i]);
 
                 var x = 0;
                 var y = 0;
@@ -368,7 +382,7 @@ Object.assign(pc, function () {
                 var glyphMinX = 0;
                 var glyphWidth = 0;
 
-                data = json.chars[charCode];
+                data = json.chars[char];
                 if (data && data.scale) {
                     var size = (data.width + data.height) / 2;
                     scale = (size / MAGIC) * this._fontSize / size;
@@ -424,7 +438,8 @@ Object.assign(pc, function () {
                             // We should only backtrack the quads that were in the word from this same texture
                             // We will have to update N number of mesh infos as a result (all textures used in the word in question)
                             for (var j = wordStartIndex; j < i; j++) {
-                                var backCharData = json.chars[pc.string.getCodePoint(symbols[j])];
+                                var backChar = symbols[j];
+                                var backCharData = json.chars[backChar];
                                 var backMeshInfo = this._meshInfo[(backCharData && backCharData.map) || 0];
                                 backMeshInfo.lines[lines - 1] -= 1;
                                 backMeshInfo.quad -= 1;
@@ -479,7 +494,7 @@ Object.assign(pc, function () {
 
                 numCharsThisLine++;
 
-                var uv = this._getUv(charCode);
+                var uv = this._getUv(char);
 
                 meshInfo.uvs[quad * 4 * 2 + 0] = uv[0];
                 meshInfo.uvs[quad * 4 * 2 + 1] = uv[1];
@@ -554,6 +569,9 @@ Object.assign(pc, function () {
                 // force update meshInstance aabb
                 this._meshInfo[i].meshInstance._aabbVer = -1;
             }
+
+            // flag text element aabb to be updated
+            this._aabbDirty = true;
         },
 
         _onFontAdded: function (asset) {
@@ -635,8 +653,9 @@ Object.assign(pc, function () {
 
             if (!data.chars[char]) {
                 // missing char - return "space" if we have it
-                if (data.chars[32]) {
-                    return this._getUv(32);
+                var space = ' ';
+                if (data.chars[space]) {
+                    return this._getUv(space);
                 }
                 // otherwise - missing char
                 return [0, 0, 1, 1];
@@ -693,6 +712,15 @@ Object.assign(pc, function () {
 
         set: function (value) {
             var str = value.toString();
+
+            if (this.unicodeConverter) {
+                var unicodeConverterFunc = this._system.getUnicodeConverter();
+                if (unicodeConverterFunc) {
+                    str = unicodeConverterFunc(str);
+                } else {
+                    console.warn('Element created with unicodeConverter option but no unicodeConverter function registered');
+                }
+            }
             if (this._text !== str) {
                 if (this._font) {
                     this._updateText(str);
@@ -952,6 +980,54 @@ Object.assign(pc, function () {
             if (value && Math.abs(this._element.anchor.y - this._element.anchor.w) < 0.0001) {
                 this._element.height = this.height;
             }
+        }
+    });
+
+
+    Object.defineProperty(TextElement.prototype, "rtlReorder", {
+        get: function () {
+            return this._rtlReorder;
+        },
+
+        set: function (value) {
+            if (this._rtlReorder !== value) {
+                this._rtlReorder = value;
+                if (this._font) {
+                    this._updateText();
+                }
+            }
+        }
+    });
+
+
+    Object.defineProperty(TextElement.prototype, "unicodeConverter", {
+        get: function () {
+            return this._unicodeConverter;
+        },
+
+        set: function (value) {
+            if (this._unicodeConverter !== value) {
+                this._unicodeConverter = value;
+                this.text = this._text;
+            }
+        }
+    });
+
+    // private
+    Object.defineProperty(TextElement.prototype, "aabb", {
+        get: function () {
+            if (this._aabbDirty) {
+                for (var i = 0; i < this._meshInfo.length; i++) {
+                    if (i === 0) {
+                        this._aabb.copy(this._meshInfo[i].meshInstance.aabb);
+                    } else {
+                        this._aabb.add(this._meshInfo[i].meshInstance.aabb);
+                    }
+                }
+
+                this._aabbDirty = false;
+            }
+            return this._aabb;
         }
     });
 
