@@ -43,7 +43,6 @@ Object.assign(pc, function () {
 
         this.id = 'camera';
         this.description = "Renders the scene from the location of the Entity.";
-        app.systems.add(this.id, this);
 
         this.ComponentType = pc.CameraComponent;
         this.DataType = pc.CameraComponentData;
@@ -56,7 +55,7 @@ Object.assign(pc, function () {
         this.on('beforeremove', this.onBeforeRemove, this);
         this.on('remove', this.onRemove, this);
 
-        pc.ComponentSystem.on('update', this.onUpdate, this);
+        pc.ComponentSystem.bind('update', this.onUpdate, this);
     };
     CameraComponentSystem.prototype = Object.create(pc.ComponentSystem.prototype);
     CameraComponentSystem.prototype.constructor = CameraComponentSystem;
@@ -96,9 +95,10 @@ Object.assign(pc, function () {
 
             // duplicate data because we're modifying the data
             var data = {};
-            properties.forEach(function (prop) {
-                data[prop] = _data[prop];
-            });
+            for (var i = 0, len = properties.length; i < len; i++) {
+                var property = properties[i];
+                data[property] = _data[property];
+            }
 
             if (data.layers && pc.type(data.layers) === 'array') {
                 data.layers = data.layers.slice(0);
@@ -149,6 +149,7 @@ Object.assign(pc, function () {
 
         onBeforeRemove: function (entity, component) {
             this.removeCamera(component);
+            component.onRemove();
         },
 
         onRemove: function (entity, data) {
@@ -173,7 +174,7 @@ Object.assign(pc, function () {
                         if (cam._node) {
                             cam._node.localTransform.copy(vrDisplay.combinedViewInv);
                             cam._node._dirtyLocal = false;
-                            cam._node._dirtify();
+                            cam._node._dirtifyWorld();
                         }
                     }
                 }

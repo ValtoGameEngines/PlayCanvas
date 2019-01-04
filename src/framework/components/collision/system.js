@@ -91,7 +91,7 @@ Object.assign(pc, function () {
 
         // Called when the collision is cloned to another entity
         clone: function (entity, clone) {
-            var src = this.system.dataStore[entity._guid];
+            var src = this.system.store[entity.getGuid()];
 
             var data = {
                 enabled: src.data.enabled,
@@ -385,7 +385,6 @@ Object.assign(pc, function () {
 
         this.id = "collision";
         this.description = "Specifies a collision volume.";
-        app.systems.add(this.id, this);
 
         this.ComponentType = pc.CollisionComponent;
         this.DataType = pc.CollisionComponentData;
@@ -396,7 +395,7 @@ Object.assign(pc, function () {
 
         this.on('remove', this.onRemove, this);
 
-        pc.ComponentSystem.on('update', this.onUpdate, this);
+        pc.ComponentSystem.bind('update', this.onUpdate, this);
     };
     CollisionComponentSystem.prototype = Object.create(pc.ComponentSystem.prototype);
     CollisionComponentSystem.prototype.constructor = CollisionComponentSystem;
@@ -409,22 +408,24 @@ Object.assign(pc, function () {
                 //
             } else {
                 // Unbind the update function if we haven't loaded Ammo by now
-                pc.ComponentSystem.off('update', this.onUpdate, this);
+                pc.ComponentSystem.unbind('update', this.onUpdate, this);
             }
         },
 
         initializeComponentData: function (component, _data, properties) {
-            // duplicate the input data because we are modifying it
-            var idx;
-            var data = {};
             properties = ['type', 'halfExtents', 'radius', 'axis', 'height', 'shape', 'model', 'asset', 'enabled'];
-            properties.forEach(function (prop) {
-                data[prop] = _data[prop];
-            });
+
+            // duplicate the input data because we are modifying it
+            var data = {};
+            for (var i = 0, len = properties.length; i < len; i++) {
+                var property = properties[i];
+                data[property] = _data[property];
+            }
 
             // asset takes priority over model
             // but they are both trying to change the mesh
             // so remove one of them to avoid conflicts
+            var idx;
             if (_data.hasOwnProperty('asset')) {
                 idx = properties.indexOf('model');
                 if (idx !== -1) {

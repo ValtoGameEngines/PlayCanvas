@@ -83,6 +83,7 @@ Object.assign(pc, function () {
                 minFilter: pc.FILTER_NEAREST,
                 magFilter: pc.FILTER_NEAREST
             });
+            this.boneTexture.name = 'batching';
             this.matrixPalette = this.boneTexture.lock();
         } else {
             this.matrixPalette = new Float32Array(numBones * 16);
@@ -153,6 +154,16 @@ Object.assign(pc, function () {
             updateLastFrameTime: 0
         };
         // #endif
+    };
+
+    // TODO: rename destroy() to something else and rename this to destroy
+    BatchManager.prototype.destroyManager = function () {
+        this.device = null;
+        this.rootNode = null;
+        this.scene = null;
+        this._batchGroups = {};
+        this._batchList = [];
+        this._dirtyGroups = [];
     };
 
     /**
@@ -727,10 +738,9 @@ Object.assign(pc, function () {
         var indexOffset = 0;
         var vbOffset = 0;
         var offsetPF, offsetNF, offsetUF, offsetU2F, offsetTF, offsetCF;
-        var transform, vec, vecData;
+        var transform, vec;
         if (!dynamic) {
             vec = new pc.Vec3();
-            vecData = vec.data;
         }
 
         for (i = 0; i < meshInstances.length; i++) {
@@ -798,17 +808,17 @@ Object.assign(pc, function () {
                             data[j * vertSizeF + offsetPF + 1],
                             data[j * vertSizeF + offsetPF + 2]);
                     transform.transformPoint(vec, vec);
-                    batchData[j * batchVertSizeF + vbOffset] =     vecData[0];
-                    batchData[j * batchVertSizeF + vbOffset + 1] = vecData[1];
-                    batchData[j * batchVertSizeF + vbOffset + 2] = vecData[2];
+                    batchData[j * batchVertSizeF + vbOffset] =     vec.x;
+                    batchData[j * batchVertSizeF + vbOffset + 1] = vec.y;
+                    batchData[j * batchVertSizeF + vbOffset + 2] = vec.z;
                     if (hasNormal) {
                         vec.set(data[j * vertSizeF + offsetNF],
                                 data[j * vertSizeF + offsetNF + 1],
                                 data[j * vertSizeF + offsetNF + 2]);
                         transform.transformVector(vec, vec);
-                        batchData[j * batchVertSizeF + vbOffset + batchOffsetNF] =    vecData[0];
-                        batchData[j * batchVertSizeF + vbOffset + batchOffsetNF + 1] = vecData[1];
-                        batchData[j * batchVertSizeF + vbOffset + batchOffsetNF + 2] = vecData[2];
+                        batchData[j * batchVertSizeF + vbOffset + batchOffsetNF] =    vec.x;
+                        batchData[j * batchVertSizeF + vbOffset + batchOffsetNF + 1] = vec.y;
+                        batchData[j * batchVertSizeF + vbOffset + batchOffsetNF + 2] = vec.z;
                     }
                     if (hasUv) {
                         batchData[j * batchVertSizeF + vbOffset + batchOffsetUF] =     data[j * vertSizeF + offsetUF];
@@ -823,9 +833,9 @@ Object.assign(pc, function () {
                                 data[j * vertSizeF + offsetTF + 1],
                                 data[j * vertSizeF + offsetTF + 2]);
                         transform.transformVector(vec, vec);
-                        batchData[j * batchVertSizeF + vbOffset + batchOffsetTF] =    vecData[0];
-                        batchData[j * batchVertSizeF + vbOffset + batchOffsetTF + 1] = vecData[1];
-                        batchData[j * batchVertSizeF + vbOffset + batchOffsetTF + 2] = vecData[2];
+                        batchData[j * batchVertSizeF + vbOffset + batchOffsetTF] =    vec.x;
+                        batchData[j * batchVertSizeF + vbOffset + batchOffsetTF + 1] = vec.y;
+                        batchData[j * batchVertSizeF + vbOffset + batchOffsetTF + 2] = vec.z;
                         batchData[j * batchVertSizeF + vbOffset + batchOffsetTF + 3] = data[j * vertSizeF + offsetTF + 3];
                     }
                     if (hasColor) {

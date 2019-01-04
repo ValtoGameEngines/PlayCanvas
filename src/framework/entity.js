@@ -59,7 +59,10 @@ Object.assign(pc, function () {
             }
         }
 
-        this.setGuid(pc.guid.create()); // Globally Unique Identifier
+        this._guid = null;
+
+        // used by component systems to speed up destruction
+        this._destroying = false;
 
         pc.events.attach(this);
     };
@@ -154,6 +157,12 @@ Object.assign(pc, function () {
      * @returns {String} The GUID of the Entity
      */
     Entity.prototype.getGuid = function () {
+        // if the guid hasn't been set yet then set it now
+        // before returning it
+        if (! this._guid) {
+            this.setGuid(pc.guid.create());
+        }
+
         return this._guid;
     };
 
@@ -169,7 +178,10 @@ Object.assign(pc, function () {
     Entity.prototype.setGuid = function (guid) {
         // remove current guid from entityIndex
         var index = this._app._entityIndex;
-        delete index[this._guid];
+        if (this._guid) {
+            delete index[this._guid];
+        }
+
         // add new guid to entityIndex
         this._guid = guid;
         index[this._guid] = this;
@@ -284,6 +296,8 @@ Object.assign(pc, function () {
     Entity.prototype.destroy = function () {
         var name;
 
+        this._destroying = true;
+
         // Disable all enabled components first
         for (name in this.c) {
             this.c[name].enabled = false;
@@ -317,14 +331,14 @@ Object.assign(pc, function () {
         this.fire('destroy', this);
 
         // clear all events
-        if (this._callbacks)
-            this._callbacks = null;
-
-        if (this._callbackActive)
-            this._callbackActive = null;
+        this.off();
 
         // remove from entity index
-        delete this._app._entityIndex[this._guid];
+        if (this._guid) {
+            delete this._app._entityIndex[this._guid];
+        }
+
+        this._destroying = false;
     };
 
     /**
@@ -339,22 +353,21 @@ Object.assign(pc, function () {
      */
     Entity.prototype.clone = function () {
         var duplicatedIdsMap = {};
-        var c = this._cloneRecursively(duplicatedIdsMap);
-        duplicatedIdsMap[this.getGuid()] = c;
+        var clone = this._cloneRecursively(duplicatedIdsMap);
+        duplicatedIdsMap[this.getGuid()] = clone;
 
-        resolveDuplicatedEntityReferenceProperties(this, this, c, duplicatedIdsMap);
+        resolveDuplicatedEntityReferenceProperties(this, this, clone, duplicatedIdsMap);
 
-        return c;
+        return clone;
     };
 
     Entity.prototype._cloneRecursively = function (duplicatedIdsMap) {
-        var type;
-        var c = new pc.Entity(this._app);
-        pc.GraphNode.prototype._cloneInternal.call(this, c);
+        var clone = new pc.Entity(this._app);
+        pc.GraphNode.prototype._cloneInternal.call(this, clone);
 
-        for (type in this.c) {
+        for (var type in this.c) {
             var component = this.c[type];
-            component.system.cloneComponent(this, c);
+            component.system.cloneComponent(this, clone);
         }
 
         var i;
@@ -362,12 +375,12 @@ Object.assign(pc, function () {
             var oldChild = this._children[i];
             if (oldChild instanceof pc.Entity) {
                 var newChild = oldChild._cloneRecursively(duplicatedIdsMap);
-                c.addChild(newChild);
+                clone.addChild(newChild);
                 duplicatedIdsMap[oldChild.getGuid()] = newChild;
             }
         }
 
-        return c;
+        return clone;
     };
 
     // When an entity that has properties that contain references to other

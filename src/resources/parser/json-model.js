@@ -24,6 +24,7 @@ Object.assign(pc, function () {
     // Take PlayCanvas JSON model data and create pc.Model
     var JsonModelParser = function (device) {
         this._device = device;
+        this._defaultMaterial = pc.getDefaultMaterial();
     };
 
     Object.assign(JsonModelParser.prototype, {
@@ -115,10 +116,7 @@ Object.assign(pc, function () {
                 var inverseBindMatrices = [];
                 for (j = 0; j < skinData.inverseBindMatrices.length; j++) {
                     var ibm = skinData.inverseBindMatrices[j];
-                    inverseBindMatrices[j] = new pc.Mat4(ibm[0], ibm[1], ibm[2], ibm[3],
-                                                         ibm[4], ibm[5], ibm[6], ibm[7],
-                                                         ibm[8], ibm[9], ibm[10], ibm[11],
-                                                         ibm[12], ibm[13], ibm[14], ibm[15]);
+                    inverseBindMatrices[j] = new pc.Mat4().set(ibm);
                 }
 
                 var skin = new pc.Skin(this._device, inverseBindMatrices, skinData.boneNames);
@@ -531,19 +529,6 @@ Object.assign(pc, function () {
             for (i = 0; i < modelData.vertices.length; i++) {
                 var vertexData = modelData.vertices[i];
 
-                // Check to see if we need to generate tangents
-                if (!vertexData.tangent && vertexData.position && vertexData.normal && vertexData.texCoord0) {
-                    var indices = [];
-                    for (j = 0; j < modelData.meshes.length; j++) {
-                        if (modelData.meshes[j].vertices === i) {
-                            indices = indices.concat(modelData.meshes[j].indices);
-                        }
-                    }
-                    // Calculate main tangents
-                    var tangents = pc.calculateTangents(vertexData.position.data, vertexData.normal.data, vertexData.texCoord0.data, indices);
-                    vertexData.tangent = { type: "float32", components: 4, data: tangents };
-                }
-
                 var formatDesc = [];
                 for (attributeName in vertexData) {
                     attribute = vertexData[attributeName];
@@ -684,7 +669,7 @@ Object.assign(pc, function () {
                 var node = nodes[meshInstanceData.node];
                 var mesh = meshes[meshInstanceData.mesh];
 
-                var meshInstance = new pc.MeshInstance(node, mesh, pc.ModelHandler.DEFAULT_MATERIAL);
+                var meshInstance = new pc.MeshInstance(node, mesh, this._defaultMaterial);
 
                 if (mesh.skin) {
                     var skinIndex = skins.indexOf(mesh.skin);

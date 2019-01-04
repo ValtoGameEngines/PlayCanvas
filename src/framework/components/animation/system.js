@@ -31,8 +31,6 @@ Object.assign(pc, function () {
         this.id = 'animation';
         this.description = "Specifies the animation assets that can run on the model specified by the Entity's model Component.";
 
-        app.systems.add(this.id, this);
-
         this.ComponentType = pc.AnimationComponent;
         this.DataType = pc.AnimationComponentData;
 
@@ -41,7 +39,7 @@ Object.assign(pc, function () {
         this.on('beforeremove', this.onBeforeRemove, this);
         this.on('update', this.onUpdate, this);
 
-        pc.ComponentSystem.on('update', this.onUpdate, this);
+        pc.ComponentSystem.bind('update', this.onUpdate, this);
     };
     AnimationComponentSystem.prototype = Object.create(pc.ComponentSystem.prototype);
     AnimationComponentSystem.prototype.constructor = AnimationComponentSystem;
@@ -58,7 +56,7 @@ Object.assign(pc, function () {
             var key;
             this.addComponent(clone, {});
 
-            clone.animation.data.assets = pc.extend([], entity.animation.assets);
+            clone.animation.assets = entity.animation.assets.slice();
             clone.animation.data.speed = entity.animation.speed;
             clone.animation.data.loop = entity.animation.loop;
             clone.animation.data.activate = entity.animation.activate;

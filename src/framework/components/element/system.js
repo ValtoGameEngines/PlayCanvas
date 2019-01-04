@@ -13,7 +13,6 @@ Object.assign(pc, function () {
 
         this.id = 'element';
         this.app = app;
-        app.systems.add(this.id, this);
 
         this.ComponentType = pc.ElementComponent;
         this.DataType = pc.ElementComponentData;
@@ -24,6 +23,7 @@ Object.assign(pc, function () {
 
         // default texture - make white so we can tint it with emissive color
         this._defaultTexture = new pc.Texture(app.graphicsDevice, { width: 1, height: 1, format: pc.PIXELFORMAT_R8_G8_B8_A8 });
+        this._defaultTexture.name = 'element-system';
         var pixels = this._defaultTexture.lock();
         var pixelData = new Uint8Array(4);
         pixelData[0] = 255.0;
@@ -63,7 +63,13 @@ Object.assign(pc, function () {
     pc.Component._buildAccessors(pc.ElementComponent.prototype, _schema);
 
     Object.assign(ElementComponentSystem.prototype, {
+        destroy: function () {
+            this._defaultTexture.destroy();
+        },
+
         initializeComponentData: function (component, data, properties) {
+            component._beingInitialized = true;
+
             if (data.anchor !== undefined) {
                 if (data.anchor instanceof pc.Vec4) {
                     component.anchor.copy(data.anchor);
@@ -83,6 +89,7 @@ Object.assign(pc, function () {
             var splitHorAnchors = Math.abs(component.anchor.x - component.anchor.z) > 0.001;
             var splitVerAnchors = Math.abs(component.anchor.y - component.anchor.w) > 0.001;
             var _marginChange = false;
+            var color;
 
             if (data.margin !== undefined) {
                 if (data.margin instanceof pc.Vec4) {
@@ -152,35 +159,17 @@ Object.assign(pc, function () {
             component.type = data.type;
             if (component.type === pc.ELEMENTTYPE_IMAGE) {
                 if (data.rect !== undefined) {
-                    if (data.rect instanceof pc.Vec4) {
-                        component.rect.copy(data.rect);
-                    } else {
-                        component.rect.set(data.rect[0], data.rect[1], data.rect[2], data.rect[3]);
-                    }
+                    component.rect = data.rect;
                 }
                 if (data.color !== undefined) {
-                    if (data.color instanceof pc.Color) {
-                        component.color.set(data.color.data[0], data.color.data[1], data.color.data[2], data.opacity !== undefined ? data.opacity : 1);
-                    } else {
-                        component.color.set(data.color[0], data.color[1], data.color[2], data.opacity !== undefined ? data.opacity : 1);
+                    color = data.color;
+                    if (! (color instanceof pc.Color)) {
+                        color = new pc.Color(data.color[0], data.color[1], data.color[2]);
                     }
-                    // force update
-                    component.color = component.color;
-                } else {
-                    // default to white
-                    // force a value to update meshinstance parameters
-                    var opacity = data.opacity || 1;
-                    component.color.set(1, 1, 1, opacity);
-                    component.color = component.color;
+                    component.color = color;
                 }
 
-                if (data.opacity !== undefined) {
-                    component.opacity = data.opacity;
-                } else {
-                    // default to 1
-                    // force a value to update meshinstance parameters
-                    component.opacity = 1;
-                }
+                if (data.opacity !== undefined) component.opacity = data.opacity;
                 if (data.textureAsset !== undefined) component.textureAsset = data.textureAsset;
                 if (data.texture) component.texture = data.texture;
                 if (data.spriteAsset !== undefined) component.spriteAsset = data.spriteAsset;
@@ -200,13 +189,11 @@ Object.assign(pc, function () {
                 if (data.unicodeConverter !== undefined) component.unicodeConverter = data.unicodeConverter;
                 if (data.text !== undefined) component.text = data.text;
                 if (data.color !== undefined) {
-                    if (data.color instanceof pc.Color) {
-                        component.color.set(data.color.data[0], data.color.data[1], data.color.data[2], data.opacity !== undefined ? data.opacity : 1);
-                    } else {
-                        component.color.set(data.color[0], data.color[1], data.color[2], data.opacity !== undefined ? data.opacity : 1);
+                    color = data.color;
+                    if (! (color instanceof pc.Color)) {
+                        color = new pc.Color(color[0], color[1], color[2]);
                     }
-                    // force update
-                    component.color = component.color;
+                    component.color = color;
                 }
                 if (data.opacity !== undefined) {
                     component.opacity = data.opacity;
@@ -234,6 +221,12 @@ Object.assign(pc, function () {
             }
 
             pc.ComponentSystem.prototype.initializeComponentData.call(this, component, data, properties);
+
+            component._beingInitialized = false;
+
+            if (component.type === pc.ELEMENTTYPE_IMAGE && component._image._meshDirty) {
+                component._image._updateMesh(component._image.mesh);
+            }
         },
 
         onRemoveComponent: function (entity, component) {

@@ -221,3 +221,117 @@ Object.defineProperty(pc.shaderChunks, "transformSkinnedVS", {
         return "#define SKIN\n" + pc.shaderChunks.transformVS;
     }
 });
+
+Object.defineProperty(pc.Vec2.prototype, "data", {
+    get: function () {
+        // #ifdef DEBUG
+        console.warn('pc.Vec2#data is not public API and should not be used. Access vector components via their individual properties.');
+        // #endif
+        if (!this._data) {
+            this._data = new Float32Array(2);
+        }
+        this._data[0] = this.x;
+        this._data[1] = this.y;
+        return this._data;
+    }
+});
+
+Object.defineProperty(pc.Vec3.prototype, "data", {
+    get: function () {
+        // #ifdef DEBUG
+        console.warn('pc.Vec3#data is not public API and should not be used. Access vector components via their individual properties.');
+        // #endif
+        if (!this._data) {
+            this._data = new Float32Array(3);
+        }
+        this._data[0] = this.x;
+        this._data[1] = this.y;
+        this._data[2] = this.z;
+        return this._data;
+    }
+});
+
+Object.defineProperty(pc.Vec4.prototype, "data", {
+    get: function () {
+        // #ifdef DEBUG
+        console.warn('pc.Vec4#data is not public API and should not be used. Access vector components via their individual properties.');
+        // #endif
+        if (!this._data) {
+            this._data = new Float32Array(4);
+        }
+        this._data[0] = this.x;
+        this._data[1] = this.y;
+        this._data[2] = this.z;
+        this._data[3] = this.w;
+        return this._data;
+    }
+});
+
+Object.defineProperty(pc.Color.prototype, "data", {
+    get: function () {
+        // #ifdef DEBUG
+        console.warn('pc.Color#data is not public API and should not be used. Access color components via their individual properties.');
+        // #endif
+        if (!this._data) {
+            this._data = new Float32Array(4);
+        }
+        this._data[0] = this.r;
+        this._data[1] = this.g;
+        this._data[2] = this.b;
+        this._data[3] = this.a;
+        return this._data;
+    }
+});
+
+Object.defineProperty(pc.Color.prototype, "data3", {
+    get: function () {
+        // #ifdef DEBUG
+        console.warn('pc.Color#data3 is not public API and should not be used. Access color components via their individual properties.');
+        // #endif
+        if (!this._data3) {
+            this._data3 = new Float32Array(3);
+        }
+        this._data3[0] = this.r;
+        this._data3[1] = this.g;
+        this._data3[2] = this.b;
+        return this._data3;
+    }
+});
+
+pc.Material.prototype.getName = function () {
+    // #ifdef DEBUG
+    console.warn('DEPRECATED: pc.Material#getName is deprecated. Get the pc.Material#name property instead.');
+    // #endif
+    return this.name;
+};
+
+pc.Material.prototype.setName = function (name) {
+    // #ifdef DEBUG
+    console.warn('DEPRECATED: pc.Material#getName is deprecated. Set the pc.Material#name property instead.');
+    // #endif
+    this.name = name;
+};
+
+pc.Material.prototype.getShader = function () {
+    // #ifdef DEBUG
+    console.warn('DEPRECATED: pc.Material#getShader is deprecated. Get the pc.Material#shader property instead.');
+    // #endif
+    return this.shader;
+};
+
+pc.Material.prototype.setShader = function (shader) {
+    // #ifdef DEBUG
+    console.warn('DEPRECATED: pc.Material#setShader is deprecated. Set the pc.Material#shader property instead.');
+    // #endif
+    this.shader = shader;
+};
+
+pc.GraphNode.prototype._dirtify = function (local) {
+    // #ifdef DEBUG
+    console.warn('DEPRECATED: pc.GraphNode#_dirtify is deprecated. Use the pc.GraphNode#_dirtifyLocal or _dirtifyWorld respectively instead.');
+    // #endif
+    if (local)
+        this._dirtifyLocal();
+    else
+        this._dirtifyWorld();
+};

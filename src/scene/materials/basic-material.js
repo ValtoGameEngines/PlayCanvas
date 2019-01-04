@@ -25,10 +25,10 @@ Object.assign(pc, function () {
         pc.Material.call(this);
 
         this.color = new pc.Color(1, 1, 1, 1);
+        this.colorUniform = new Float32Array(4);
+
         this.colorMap = null;
         this.vertexColors = false;
-
-        this.update();
     };
     BasicMaterial.prototype = Object.create(pc.Material.prototype);
     BasicMaterial.prototype.constructor = BasicMaterial;
@@ -50,14 +50,17 @@ Object.assign(pc, function () {
             clone.colorMap = this.colorMap;
             clone.vertexColors = this.vertexColors;
 
-            clone.update();
             return clone;
         },
 
-        update: function () {
+        updateUniforms: function () {
             this.clearParameters();
 
-            this.setParameter('uColor', this.color.data);
+            this.colorUniform[0] = this.color.r;
+            this.colorUniform[1] = this.color.g;
+            this.colorUniform[2] = this.color.b;
+            this.colorUniform[3] = this.color.a;
+            this.setParameter('uColor', this.colorUniform);
             if (this.colorMap) {
                 this.setParameter('texture_diffuseMap', this.colorMap);
             }

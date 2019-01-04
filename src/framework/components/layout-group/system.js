@@ -16,7 +16,6 @@ Object.assign(pc, function () {
 
         this.id = 'layoutgroup';
         this.app = app;
-        app.systems.add(this.id, this);
 
         this.ComponentType = pc.LayoutGroupComponent;
         this.DataType = pc.LayoutGroupComponentData;
@@ -28,7 +27,7 @@ Object.assign(pc, function () {
         this.on('beforeremove', this._onRemoveComponent, this);
 
         // Perform reflow when running in the engine
-        pc.ComponentSystem.on('postUpdate', this._onPostUpdate, this);
+        pc.ComponentSystem.bind('postUpdate', this._onPostUpdate, this);
     };
     LayoutGroupComponentSystem.prototype = Object.create(pc.ComponentSystem.prototype);
     LayoutGroupComponentSystem.prototype.constructor = LayoutGroupComponentSystem;
@@ -120,7 +119,7 @@ Object.assign(pc, function () {
                 // any layout groups which are children of other layout groups will always have their
                 // new size set before their own reflow is calculated.
                 queue.sort(function (componentA, componentB) {
-                    return componentA.entity.graphDepth > componentB.entity.graphDepth;
+                    return (componentA.entity.graphDepth - componentB.entity.graphDepth);
                 });
 
                 for (var i = 0; i < queue.length; ++i) {

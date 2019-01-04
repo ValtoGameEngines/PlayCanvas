@@ -146,7 +146,6 @@ Object.assign(pc, function () {
 
         this.id = 'rigidbody';
         this.description = "Adds the entity to the scene's physical simulation.";
-        app.systems.add(this.id, this);
         this._stats = app.stats.frame;
 
         this.ComponentType = pc.RigidBodyComponent;
@@ -184,10 +183,10 @@ Object.assign(pc, function () {
                 // Lazily create temp vars
                 ammoRayStart = new Ammo.btVector3();
                 ammoRayEnd = new Ammo.btVector3();
-                pc.ComponentSystem.on('update', this.onUpdate, this);
+                pc.ComponentSystem.bind('update', this.onUpdate, this);
             } else {
                 // Unbind the update function if we haven't loaded Ammo by now
-                pc.ComponentSystem.off('update', this.onUpdate, this);
+                pc.ComponentSystem.unbind('update', this.onUpdate, this);
             }
         },
 
@@ -196,9 +195,10 @@ Object.assign(pc, function () {
 
             // duplicate the input data because we are modifying it
             var data = {};
-            properties.forEach(function (prop) {
-                data[prop] = _data[prop];
-            });
+            for (var i = 0, len = properties.length; i < len; i++) {
+                var property = properties[i];
+                data[property] = _data[property];
+            }
 
             // backwards compatibility
             if (_data.bodyType) {
@@ -357,7 +357,7 @@ Object.assign(pc, function () {
          */
         _storeCollision: function (entity, other) {
             var isNewCollision = false;
-            var guid = entity._guid;
+            var guid = entity.getGuid();
 
             collisions[guid] = collisions[guid] || { others: [], entity: entity };
 

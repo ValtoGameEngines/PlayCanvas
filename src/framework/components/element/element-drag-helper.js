@@ -70,7 +70,7 @@ Object.assign(pc, function () {
             this._app.mouse[onOrOff]('mousemove', this._onMove, this);
             window[addOrRemoveEventListener]('mouseup', this._handleMouseUpOrTouchEnd, false);
 
-            if ('ontouchstart' in window) {
+            if (pc.platform.touch) {
                 this._app.touch[onOrOff]('touchmove', this._onMove, this);
                 window[addOrRemoveEventListener]('touchend', this._handleMouseUpOrTouchEnd, false);
                 window[addOrRemoveEventListener]('touchcancel', this._handleMouseUpOrTouchEnd, false);
@@ -174,9 +174,9 @@ Object.assign(pc, function () {
                 }
             }
 
-            dragScale.data[0] = 1 / dragScale.data[0];
-            dragScale.data[1] = 1 / dragScale.data[1];
-            dragScale.data[2] = 1 / dragScale.data[2];
+            dragScale.x = 1 / dragScale.x;
+            dragScale.y = 1 / dragScale.y;
+            dragScale.z = 1 / dragScale.z;
         },
 
         _onMove: function (event) {

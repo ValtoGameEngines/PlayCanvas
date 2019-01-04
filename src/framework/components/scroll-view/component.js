@@ -59,6 +59,7 @@ Object.assign(pc, function () {
         this._scroll = new pc.Vec2();
         this._velocity = new pc.Vec3();
 
+        this._dragStartPosition = new pc.Vec3();
         this._disabledContentInput = false;
         this._disabledContentInputEntities = [];
 
@@ -72,8 +73,6 @@ Object.assign(pc, function () {
         _toggleLifecycleListeners: function (onOrOff, system) {
             this[onOrOff]('set_horizontal', this._onSetHorizontalScrollingEnabled, this);
             this[onOrOff]('set_vertical', this._onSetVerticalScrollingEnabled, this);
-
-            pc.ComponentSystem[onOrOff]('update', this._onUpdate, this);
 
             system.app.systems.element[onOrOff]('add', this._onElementComponentAdd, this);
             system.app.systems.element[onOrOff]('beforeremove', this._onElementComponentRemove, this);
@@ -112,6 +111,7 @@ Object.assign(pc, function () {
         _onContentElementGain: function () {
             this._destroyDragHelper();
             this._contentDragHelper = new pc.ElementDragHelper(this._contentReference.entity.element);
+            this._contentDragHelper.on('drag:start', this._onContentDragStart, this);
             this._contentDragHelper.on('drag:end', this._onContentDragEnd, this);
             this._contentDragHelper.on('drag:move', this._onContentDragMove, this);
 
@@ -123,6 +123,12 @@ Object.assign(pc, function () {
 
         _onContentElementLose: function () {
             this._destroyDragHelper();
+        },
+
+        _onContentDragStart: function () {
+            if (this._contentReference.entity && this.enabled && this.entity.enabled) {
+                this._dragStartPosition.copy(this._contentReference.entity.getLocalPosition());
+            }
         },
 
         _onContentDragEnd: function () {
@@ -139,7 +145,16 @@ Object.assign(pc, function () {
                 // if we haven't already, when scrolling starts
                 // disable input on all child elements
                 if (!this._disabledContentInput) {
-                    this._disableContentInput();
+
+                    // Disable input events on content after we've moved past a threshold value
+                    var dx = (position.x - this._dragStartPosition.x);
+                    var dy = (position.y - this._dragStartPosition.y);
+
+                    if (Math.abs(dx) > this.dragThreshold ||
+                        Math.abs(dy) > this.dragThreshold) {
+                        this._disableContentInput();
+                    }
+
                 }
             }
         },
@@ -426,8 +441,8 @@ Object.assign(pc, function () {
             }
         },
 
-        _onUpdate: function () {
-            if (this._contentReference.entity && this.enabled && this.entity.enabled) {
+        onUpdate: function () {
+            if (this._contentReference.entity) {
                 this._updateVelocity();
                 this._syncScrollbarEnabledState(pc.ORIENTATION_HORIZONTAL);
                 this._syncScrollbarEnabledState(pc.ORIENTATION_VERTICAL);
@@ -446,13 +461,13 @@ Object.assign(pc, function () {
                     }
                 }
 
-                this._velocity.data[0] *= (1 - this.friction);
-                this._velocity.data[1] *= (1 - this.friction);
+                this._velocity.x *= (1 - this.friction);
+                this._velocity.y *= (1 - this.friction);
 
                 if (Math.abs(this._velocity.x) > 1e-4 || Math.abs(this._velocity.y) > 1e-4) {
                     var position = this._contentReference.entity.getLocalPosition();
-                    position.x += this._velocity.data[0];
-                    position.y += this._velocity.data[1];
+                    position.x += this._velocity.x;
+                    position.y += this._velocity.y;
                     this._contentReference.entity.setLocalPosition(position);
 
                     this._setScrollFromContentPosition(position);

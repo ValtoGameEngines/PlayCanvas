@@ -7,7 +7,9 @@ Object.assign(pc, function () {
      */
     var ComponentSystem = function (app) {
         this.app = app;
-        this.dataStore = {};
+
+        // The store where all pc.ComponentData objects are kept
+        this.store = {};
         this.schema = [];
 
         pc.events.attach(this);
@@ -15,45 +17,106 @@ Object.assign(pc, function () {
 
     // Class methods
     Object.assign(ComponentSystem, {
+        _helper: function (a, p) {
+            for (var i = 0, l = a.length; i < l; i++) {
+                a[i].f.call(a[i].s, p);
+            }
+        },
+
         initialize: function (root) {
-            ComponentSystem.fire('initialize', root);
+            this._helper(this._init, root);
         },
 
         postInitialize: function (root) {
-            ComponentSystem.fire('postInitialize', root);
+            this._helper(this._postInit, root);
+
+            // temp, this is for internal use on entity-references until a better system is found
+            this.fire('postinitialize', root);
         },
 
         // Update all ComponentSystems
         update: function (dt, inTools) {
-            if (inTools) {
-                ComponentSystem.fire('toolsUpdate', dt);
-            } else {
-                ComponentSystem.fire('update', dt);
-            }
+            this._helper(inTools ? this._toolsUpdate : this._update, dt);
         },
 
         // Update all ComponentSystems
         fixedUpdate: function (dt, inTools) {
-            ComponentSystem.fire('fixedUpdate', dt);
+            this._helper(this._fixedUpdate, dt);
         },
 
         // Update all ComponentSystems
         postUpdate: function (dt, inTools) {
-            ComponentSystem.fire('postUpdate', dt);
+            this._helper(this._postUpdate, dt);
+        },
+
+        _init: [],
+        _postInit: [],
+        _toolsUpdate: [],
+        _update: [],
+        _fixedUpdate: [],
+        _postUpdate: [],
+
+        bind: function (event, func, scope) {
+            switch (event) {
+                case 'initialize':
+                    this._init.push({ f: func, s: scope });
+                    break;
+                case 'postInitialize':
+                    this._postInit.push({ f: func, s: scope });
+                    break;
+                case 'update':
+                    this._update.push({ f: func, s: scope });
+                    break;
+                case 'postUpdate':
+                    this._postUpdate.push({ f: func, s: scope });
+                    break;
+                case 'fixedUpdate':
+                    this._fixedUpdate.push({ f: func, s: scope });
+                    break;
+                case 'toolsUpdate':
+                    this._toolsUpdate.push({ f: func, s: scope });
+                    break;
+                default:
+                    console.error('Component System does not support event', event);
+            }
+        },
+
+        _erase: function (a, f, s) {
+            for (var i = 0; i < a.length; i++) {
+                if (a[i].f === f && a[i].s === s) {
+                    a.splice(i--, 1);
+                }
+            }
+        },
+
+        unbind: function (event, func, scope) {
+            switch (event) {
+                case 'initialize':
+                    this._erase(this._init, func, scope);
+                    break;
+                case 'postInitialize':
+                    this._erase(this._postInit, func, scope);
+                    break;
+                case 'update':
+                    this._erase(this._update, func, scope);
+                    break;
+                case 'postUpdate':
+                    this._erase(this._postUpdate, func, scope);
+                    break;
+                case 'fixedUpdate':
+                    this._erase(this._fixedUpdate, func, scope);
+                    break;
+                case 'toolsUpdate':
+                    this._erase(this._toolsUpdate, func, scope);
+                    break;
+                default:
+                    console.error('Component System does not support event', event);
+            }
         }
     });
 
     // Instance methods
     ComponentSystem.prototype = {
-        /**
-         * @private
-         * @name pc.ComponentSystem#store
-         * @description The store where all {@link pc.ComponentData} objects are kept
-         */
-        get store() {
-            return this.dataStore;
-        },
-
         /**
          * @private
          * @function
@@ -73,7 +136,7 @@ Object.assign(pc, function () {
 
             data = data || {};
 
-            this.dataStore[entity._guid] = {
+            this.store[entity.getGuid()] = {
                 entity: entity,
                 data: componentData
             };
@@ -99,10 +162,10 @@ Object.assign(pc, function () {
          * // entity.model === undefined
          */
         removeComponent: function (entity) {
-            var record = this.dataStore[entity._guid];
+            var record = this.store[entity.getGuid()];
             var component = entity.c[this.id];
             this.fire('beforeremove', entity, component);
-            delete this.dataStore[entity._guid];
+            delete this.store[entity.getGuid()];
             delete entity[this.id];
             delete entity.c[this.id];
             this.fire('remove', entity, record.data);
@@ -119,7 +182,7 @@ Object.assign(pc, function () {
          */
         cloneComponent: function (entity, clone) {
             // default clone is just to add a new component with existing data
-            var src = this.dataStore[entity._guid];
+            var src = this.store[entity.getGuid()];
             return this.addComponent(clone, src.data);
         },
 
@@ -136,21 +199,24 @@ Object.assign(pc, function () {
         initializeComponentData: function (component, data, properties) {
             data = data || {};
 
+            var descriptor;
+            var name, type, value;
+
             // initialize
-            properties.forEach(function (descriptor) {
-                var name;
-                var type;
+            for (var i = 0, len = properties.length; i < len; i++) {
+                descriptor = properties[i];
 
                 // If the descriptor is an object, it will have `name` and `type` members
                 if (typeof descriptor === 'object') {
                     name = descriptor.name;
                     type = descriptor.type;
-                // Otherwise, the descriptor is just the property name
                 } else {
+                    // Otherwise, the descriptor is just the property name
                     name = descriptor;
+                    type = undefined;
                 }
 
-                var value = data[name];
+                value = data[name];
 
                 if (value !== undefined) {
                     // If we know the intended type of the value, convert the raw data
@@ -163,8 +229,7 @@ Object.assign(pc, function () {
                 } else {
                     component[name] = component.data[name];
                 }
-
-            }, this);
+            }
 
             // after component is initialized call onEnable
             if (component.enabled && component.entity.enabled) {
@@ -191,6 +256,10 @@ Object.assign(pc, function () {
             });
 
             return matchingProperties;
+        },
+
+        destroy: function () {
+            this.off();
         }
     };
 
@@ -199,18 +268,31 @@ Object.assign(pc, function () {
             return value;
         }
 
-        value = (value && value.data) ? value.data : value;
-
         switch (type) {
             case 'rgb':
+                if (value instanceof pc.Color) {
+                    return value.clone();
+                }
                 return new pc.Color(value[0], value[1], value[2]);
             case 'rgba':
+                if (value instanceof pc.Color) {
+                    return value.clone();
+                }
                 return new pc.Color(value[0], value[1], value[2], value[3]);
             case 'vec2':
+                if (value instanceof pc.Vec2) {
+                    return value.clone();
+                }
                 return new pc.Vec2(value[0], value[1]);
             case 'vec3':
+                if (value instanceof pc.Vec3) {
+                    return value.clone();
+                }
                 return new pc.Vec3(value[0], value[1], value[2]);
             case 'vec4':
+                if (value instanceof pc.Vec4) {
+                    return value.clone();
+                }
                 return new pc.Vec4(value[0], value[1], value[2], value[3]);
             case 'boolean':
             case 'number':

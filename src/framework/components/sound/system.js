@@ -29,7 +29,6 @@ Object.assign(pc, function () {
 
         this.id = "sound";
         this.description = "Allows an Entity to play sounds";
-        app.systems.add(this.id, this);
 
         this.ComponentType = pc.SoundComponent;
         this.DataType = pc.SoundComponentData;
@@ -38,7 +37,7 @@ Object.assign(pc, function () {
 
         this.manager = manager;
 
-        pc.ComponentSystem.on('update', this.onUpdate, this);
+        pc.ComponentSystem.bind('update', this.onUpdate, this);
 
         this.on('beforeremove', this.onBeforeRemove, this);
     };
@@ -124,6 +123,8 @@ Object.assign(pc, function () {
                     slots[key].stop();
                 }
             }
+
+            component.onRemove();
         }
     });
 

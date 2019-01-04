@@ -30,7 +30,6 @@ Object.assign(pc, function () {
 
         this.id = "audiosource";
         this.description = "Specifies audio assets that can be played at the position of the Entity.";
-        app.systems.add(this.id, this);
 
         this.ComponentType = pc.AudioSourceComponent;
         this.DataType = pc.AudioSourceComponentData;
@@ -41,8 +40,8 @@ Object.assign(pc, function () {
 
         this.initialized = false;
 
-        pc.ComponentSystem.on('initialize', this.onInitialize, this);
-        pc.ComponentSystem.on('update', this.onUpdate, this);
+        pc.ComponentSystem.bind('initialize', this.onInitialize, this);
+        pc.ComponentSystem.bind('update', this.onUpdate, this);
 
         this.on('remove', this.onRemove, this);
     };

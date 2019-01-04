@@ -15,7 +15,6 @@ Object.assign(pc, function () {
 
         this.id = "audiolistener";
         this.description = "Specifies the location of the listener for 3D audio playback.";
-        app.systems.add(this.id, this);
 
         this.ComponentType = pc.AudioListenerComponent;
         this.DataType = pc.AudioListenerComponentData;
@@ -25,7 +24,7 @@ Object.assign(pc, function () {
         this.manager = manager;
         this.current = null;
 
-        pc.ComponentSystem.on('update', this.onUpdate, this);
+        pc.ComponentSystem.bind('update', this.onUpdate, this);
     };
     AudioListenerComponentSystem.prototype = Object.create(pc.ComponentSystem.prototype);
     AudioListenerComponentSystem.prototype.constructor = AudioListenerComponentSystem;
