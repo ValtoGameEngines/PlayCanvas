@@ -422,32 +422,6 @@ describe('pc.ImageElement', function () {
         expect(spy.notCalled).to.equal(true);
     });
 
-    it('Image element calls _updateMesh if only rect passed in data', function () {
-        var spy = sandbox.spy(pc.ImageElement.prototype, '_updateMesh');
-
-        var rect = [1, 1, 1, 1];
-
-        var e = new pc.Entity();
-        e.addComponent('element', {
-            type: 'image',
-            rect: rect
-        });
-        app.root.addChild(e);
-
-        expect(spy.calledTwice).to.equal(true);
-
-        expect(e.element._image._uvs).to.deep.equal([
-            rect[0],
-            rect[1],
-            rect[0] + rect[2],
-            rect[1],
-            rect[0] + rect[2],
-            rect[1] + rect[3],
-            rect[0],
-            rect[1] + rect[3]
-        ]);
-    });
-
     it('Image element calls _updateMesh once at the start and once at the end when all properties that call it are passed into the data', function () {
         var spy = sandbox.spy(pc.ImageElement.prototype, '_updateMesh');
 
@@ -998,12 +972,10 @@ describe('pc.ImageElement', function () {
         expect(e.element.isVisibleForCamera(camera.camera.camera)).to.be.false;
     });
 
-    it('TextureAtlas asset events are unbound if sprite is changed while loading', function (done) {
-
+    it.skip('TextureAtlas asset events are unbound if sprite is changed while loading', function (done) {
         app.assets.list().forEach(function (asset) {
             asset.unload();
         });
-
 
         var spriteAsset = new pc.Asset('red-sprite', 'sprite', {
             url: 'base/tests/test-assets/sprite/red-sprite.json'
@@ -1011,6 +983,10 @@ describe('pc.ImageElement', function () {
         var textureAtlasAsset = new pc.Asset('red-texture', 'texture', {
             url: 'base/tests/test-assets/sprite/red-atlas.json'
         });
+
+        if (spriteAsset.resource) {
+            fail("spriteAsset should not be loaded at this stage");
+        }
 
         spriteAsset.once("load", function () {
             expect(app.assets.hasEvent('load:' + textureAtlasAsset.id)).to.be.true;
